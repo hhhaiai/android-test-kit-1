@@ -1,0 +1,9 @@
+apply plugin: 'android-library'
+
+description = 'Espresso Contrib Library'
+
+dependencies {
+  compile project(':espresso-parent:espresso')
+    compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
+    compile(group: 'android.support', name: 'compatibility-v4', version:'19.0.1')
+}

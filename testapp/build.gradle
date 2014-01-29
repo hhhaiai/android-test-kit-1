@@ -1,0 +1,18 @@
+apply plugin: 'android'
+
+description = 'Test App For UI Testing'
+
+dependencies {
+    compile group: 'com.google.guava', name: 'guava', version:'14.0.1'
+    compile group: 'android.support', name: 'compatibility-v4', version:'19.0.1'
+    compile group: 'android.support', name: 'compatibility-v7-appcompat', version:'19.0.1'
+    compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
+}
+
+android {
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+}

@@ -1,0 +1,8 @@
+apply plugin: 'android-library'
+
+description = 'Google Instrumentation TestRunner-Runtime'
+
+dependencies {
+  compile project(':testrunner')
+  compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
+}
