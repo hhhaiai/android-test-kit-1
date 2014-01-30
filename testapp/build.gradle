@@ -1,4 +1,4 @@
-apply plugin: 'android'
+apply plugin: 'java'
 
 description = 'Test App For UI Testing'
 

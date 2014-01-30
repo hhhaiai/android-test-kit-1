@@ -1,4 +1,4 @@
-apply plugin: 'android-library'
+apply plugin: 'java'
 
 description = 'Espresso Testing Framework'
 
@@ -12,7 +12,7 @@ dependencies {
     compile group: 'org.hamcrest', name: 'hamcrest-core', version:'1.1'
     compile group: 'org.hamcrest', name: 'hamcrest-library', version:'1.1'
     compile group: 'org.hamcrest', name: 'hamcrest-integration', version:'1.1'
-  compile project(':testrunner-runtime')
+    compile project(':android-test-kit:testrunner-runtime')
     compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
     compile(group: 'com.google.android', name: 'android-test', version:'4.1.1.4')
 }

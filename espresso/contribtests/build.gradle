@@ -3,9 +3,9 @@
 description = 'Tests for the Espresso Contrib Library'
 
 dependencies {
-  compile project(':espresso-parent:espresso-contrib')
-  compile project(':testrunner-runtime')
-  compile project(':testapp')
+    compile project(':espresso:contrib')
+    compile project(':testrunner-runtime')
+    compile project(':testapp')
     compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
     compile(group: 'com.google.android', name: 'android-test', version:'4.1.1.4')
 }

@@ -1,4 +1,4 @@
-apply plugin: 'android-library'
+apply plugin: 'java'
 
 description = 'Google Instrumentation TestRunner'
 

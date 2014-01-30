@@ -3,8 +3,8 @@
 description = 'Tests For the Espresso Test Framework'
 
 dependencies {
-  compile project(':espresso-parent:espresso')
-  compile project(':testapp')
+    compile project(':espresso:lib')
+    compile project(':testapp')
     compile group: 'com.google.dexmaker', name: 'dexmaker-mockito', version:'1.0'
     compile group: 'com.google.dexmaker', name: 'dexmaker', version:'1.0'
     compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
