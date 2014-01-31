@@ -10,7 +10,6 @@
         <uses-library android:name="android.test.runner" />
     </application>
 
-
     <instrumentation
         android:name="com.google.android.apps.common.testing.testrunner.GoogleInstrumentationTestRunner"
         android:targetPackage="com.google.android.apps.common.testing.ui.testapp" />

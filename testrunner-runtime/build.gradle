@@ -12,7 +12,6 @@ description = 'Google Instrumentation TestRunner-Runtime'
 
 dependencies {
   compile project(':android-test-kit:testrunner')
-//  compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
 }
 
 android {

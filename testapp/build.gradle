@@ -1,4 +1,4 @@
-apply plugin: 'java'
+apply plugin: 'android'
 
 repositories {
     mavenLocal()
@@ -12,15 +12,44 @@ description = 'Test App For UI Testing'
 
 dependencies {
     compile group: 'com.google.guava', name: 'guava', version:'14.0.1'
-    compile group: 'android.support', name: 'compatibility-v4', version:'19.0.1'
-    compile group: 'android.support', name: 'compatibility-v7-appcompat', version:'19.0.1'
-    compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
+    compile group: 'com.android.support', name: 'support-v4', version:'19.0.1'
+    compile group: 'com.android.support', name: 'appcompat-v7', version:'19.0.1'
+
+    instrumentTestCompile(project(':android-test-kit:espresso:contrib')) {
+        exclude group: 'com.google.guava', module: 'guava'
+        exclude group: 'com.android.support', module:'support-v4'
+    }
 }
 
 android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    defaultConfig {
+        testPackageName 'com.google.android.apps.common.testing.ui.testapp.tests'
+        testInstrumentationRunner 'com.google.android.apps.common.testing.testrunner.GoogleInstrumentationTestRunner'
+    }
+
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            resources.srcDirs = ['src']
+            aidl.srcDirs = ['src']
+            renderscript.srcDirs = ['src']
+            res.srcDirs = ['res']
         }
+
+        instrumentTest.setRoot('../testapp_test')
+        instrumentTest {
+            manifest.srcFile '../testapp_test/AndroidManifest.xml'
+            java.srcDirs = ['../testapp_test/src']
+            resources.srcDirs = ['../testapp_test/src']
+            res.srcDirs = ['../testapp_test/res']
+        }
+    }
+
+    packagingOptions {
+        exclude 'LICENSE.txt'
     }
 }

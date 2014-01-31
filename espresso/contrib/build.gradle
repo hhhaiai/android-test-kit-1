@@ -12,9 +12,7 @@ description = 'Espresso Contrib Library'
 
 dependencies {
     compile project(':android-test-kit:espresso:lib')
-//    compile(group: 'com.google.android', name: 'android', version:'4.1.1.4')
-//    compile(group: 'com.android.support', name: 'support-v4', version:'+')
-    compile 'com.android.support:support-v4:+'
+    compile 'com.android.support:support-v4:19.0.1'
 }
 
 android {
