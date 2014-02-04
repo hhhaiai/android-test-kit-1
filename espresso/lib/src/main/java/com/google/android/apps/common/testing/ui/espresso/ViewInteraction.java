@@ -1,27 +1,33 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
-import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isAssignableFrom;
-import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isDescendantOfA;
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.os.Build;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import android.widget.AdapterView;
 
 import com.google.android.apps.common.testing.ui.espresso.action.ScrollToAction;
 import com.google.android.apps.common.testing.ui.espresso.base.MainThread;
+import com.google.android.apps.common.testing.ui.espresso.base.RootViewPicker;
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
 import com.google.common.base.Optional;
-
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
 
 import org.hamcrest.Matcher;
 import org.hamcrest.StringDescription;
 
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
+
+import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isAssignableFrom;
+import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isDescendantOfA;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Provides the primary interface for test authors to perform actions or asserts on views.
@@ -42,6 +48,7 @@ public final class ViewInteraction {
   private final FailureHandler failureHandler;
   private final Matcher<View> viewMatcher;
   private final AtomicReference<Matcher<Root>> rootMatcherRef;
+  private final RootViewPicker rootViewPicker;
 
   @Inject
   ViewInteraction(
@@ -50,13 +57,15 @@ public final class ViewInteraction {
       @MainThread Executor mainThreadExecutor,
       FailureHandler failureHandler,
       Matcher<View> viewMatcher,
-      AtomicReference<Matcher<Root>> rootMatcherRef) {
+      AtomicReference<Matcher<Root>> rootMatcherRef,
+      RootViewPicker rootViewPicker) {
     this.viewFinder = checkNotNull(viewFinder);
     this.uiController = checkNotNull(uiController);
     this.failureHandler = checkNotNull(failureHandler);
     this.mainThreadExecutor = checkNotNull(mainThreadExecutor);
     this.viewMatcher = checkNotNull(viewMatcher);
     this.rootMatcherRef = checkNotNull(rootMatcherRef);
+    this.rootViewPicker = checkNotNull(rootViewPicker);
   }
 
   /**
@@ -146,6 +155,87 @@ public final class ViewInteraction {
       }
     });
     return this;
+  }
+
+  public ViewInteraction waitFor(long timeout, TimeUnit unit, final ViewAssertion viewAssert) {
+      checkNotNull(viewAssert);
+
+      final HashSet<ViewTreeObserver> observers = new HashSet<ViewTreeObserver>();
+      final Object notifier = new Object();
+      final ViewTreeObserver.OnGlobalLayoutListener layoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
+          @Override
+          public void onGlobalLayout() {
+              synchronized (notifier) {
+                  notifier.notifyAll();
+              }
+          }
+      };
+//      final ViewTreeObserver.OnWindowFocusChangeListener windowListener = new ViewTreeObserver.OnWindowFocusChangeListener() {
+//          @Override
+//          public void onWindowFocusChanged(boolean hasFocus) {
+//              synchronized (notifier) {
+//                  ViewTreeObserver vto = rootViewPicker.get().getViewTreeObserver();
+//                  vto.addOnGlobalLayoutListener(layoutListener);
+//                  vto.addOnWindowFocusChangeListener(this);
+//                  observers.add(vto);
+//                  notifier.notifyAll();
+//              }
+//          }
+//      };
+
+      runSynchronouslyOnUiThread(new Runnable() {
+          @Override
+          public void run() {
+              ViewTreeObserver vto = rootViewPicker.get().getViewTreeObserver();
+              vto.addOnGlobalLayoutListener(layoutListener);
+//              vto.addOnWindowFocusChangeListener(windowListener);
+              observers.add(vto);
+          }
+      });
+
+      final Throwable t[] = new Throwable[1];
+      try {
+          long target = SystemClock.currentThreadTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit);
+          while (true) {
+              runSynchronouslyOnUiThread(new Runnable() {
+                  @Override
+                  public void run() {
+                      try {
+                          viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
+                          t[0] = null;
+                      } catch (NoMatchingViewException nmve) {
+                          t[0] = nmve;
+                      } catch (AssertionError ae) {
+                          t[0] = ae;
+                      }
+                  }
+              });
+
+              if (t[0] == null || SystemClock.currentThreadTimeMillis() >= target)
+                  break;
+
+              try {
+                  synchronized (notifier) {
+                      notifier.wait(Math.max(0, target - SystemClock.currentThreadTimeMillis()));
+                  }
+              } catch (InterruptedException e) { /* go round again */ }
+          }
+      } finally {
+          for (ViewTreeObserver vto : observers) {
+              if (!vto.isAlive())
+                  continue;
+              if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
+                vto.removeGlobalOnLayoutListener(layoutListener);
+              else
+                vto.removeOnGlobalLayoutListener(layoutListener);
+//              vto.removeOnWindowFocusChangeListener(windowListener);
+          }
+      }
+
+      if (t[0] != null)
+          throw new WaitTimedOutException(timeout, unit, t[0]);
+
+      return this;
   }
 
   private void runSynchronouslyOnUiThread(Runnable action) {
