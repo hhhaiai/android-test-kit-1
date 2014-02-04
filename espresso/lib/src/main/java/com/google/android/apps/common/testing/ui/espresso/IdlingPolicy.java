@@ -1,12 +1,12 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import android.util.Log;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Allows users to control idling idleTimeouts in Espresso.
@@ -18,6 +18,7 @@ public final class IdlingPolicy {
   private final long idleTimeout;
   private final TimeUnit unit;
   private final ResponseAction errorHandler;
+  private final boolean waitForAsyncTasks;
 
   /**
    * The amount of time the policy allows a resource to be non-idle.
@@ -32,6 +33,13 @@ public final class IdlingPolicy {
   public TimeUnit getIdleTimeoutUnit() {
     return unit;
   }
+
+  /**
+   * Whether UiController.loopUntilMainThreadIdle() should wait for AsyncTasks to be complete
+   * @return
+   */
+  public boolean shouldWaitForAsyncTasks() { return waitForAsyncTasks; }
+
 
   /**
    * Invoked when the idle idleTimeout has been exceeded.
@@ -62,12 +70,14 @@ public final class IdlingPolicy {
     this.idleTimeout = builder.idleTimeout;
     this.unit = checkNotNull(builder.unit);
     this.errorHandler = checkNotNull(builder.errorHandler);
+    this.waitForAsyncTasks = builder.waitForAsyncTasks;
   }
 
   static class Builder {
     private long idleTimeout = -1;
     private TimeUnit unit = null;
     private ResponseAction errorHandler = null;
+    private boolean waitForAsyncTasks = true;
 
     public Builder() { }
 
@@ -79,6 +89,7 @@ public final class IdlingPolicy {
       this.idleTimeout = copy.idleTimeout;
       this.unit = copy.unit;
       this.errorHandler = copy.errorHandler;
+      this.waitForAsyncTasks = copy.waitForAsyncTasks;
     }
 
     public Builder withIdlingTimeout(long idleTimeout) {
@@ -103,6 +114,11 @@ public final class IdlingPolicy {
 
     public Builder logWarning() {
       this.errorHandler = ResponseAction.LOG_ERROR;
+      return this;
+    }
+
+    public Builder waitsForAsyncTasks(boolean wait) {
+      this.waitForAsyncTasks = wait;
       return this;
     }
   }

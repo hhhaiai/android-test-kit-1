@@ -1,20 +1,5 @@
 package com.google.android.apps.common.testing.ui.espresso.base;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.propagate;
-
-import com.google.android.apps.common.testing.ui.espresso.IdlingPolicies;
-import com.google.android.apps.common.testing.ui.espresso.IdlingPolicy;
-import com.google.android.apps.common.testing.ui.espresso.InjectEventSecurityException;
-import com.google.android.apps.common.testing.ui.espresso.UiController;
-import com.google.android.apps.common.testing.ui.espresso.base.IdlingResourceRegistry.IdleNotificationCallback;
-import com.google.android.apps.common.testing.ui.espresso.base.QueueInterrogator.QueueState;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
-import com.google.common.collect.Lists;
-
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Handler;
@@ -25,6 +10,16 @@ import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+
+import com.google.android.apps.common.testing.ui.espresso.IdlingPolicies;
+import com.google.android.apps.common.testing.ui.espresso.IdlingPolicy;
+import com.google.android.apps.common.testing.ui.espresso.InjectEventSecurityException;
+import com.google.android.apps.common.testing.ui.espresso.UiController;
+import com.google.android.apps.common.testing.ui.espresso.base.IdlingResourceRegistry.IdleNotificationCallback;
+import com.google.android.apps.common.testing.ui.espresso.base.QueueInterrogator.QueueState;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 
 import java.util.BitSet;
 import java.util.EnumSet;
@@ -37,6 +32,11 @@ import java.util.concurrent.FutureTask;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Throwables.propagate;
 
 /**
  * Implementation of {@link UiController}.
@@ -289,63 +289,67 @@ final class UiControllerImpl implements UiController, Handler.Callback {
   }
 
 
-  @Override
-  public void loopMainThreadUntilIdle() {
-    initialize();
-    checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
-    do {
-      EnumSet<IdleCondition> condChecks = EnumSet.noneOf(IdleCondition.class);
-      if (!asyncTaskMonitor.isIdleNow()) {
-        asyncTaskMonitor.notifyWhenIdle(new SignalingTask<Void>(NO_OP,
-            IdleCondition.ASYNC_TASKS_HAVE_IDLED, generation));
+    @Override
+    public void loopMainThreadUntilIdle() {
+        initialize();
+        checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
+        final boolean idleForAsyncTasks = IdlingPolicies.getMasterIdlingPolicy().shouldWaitForAsyncTasks();
+        do {
+            EnumSet<IdleCondition> condChecks = EnumSet.noneOf(IdleCondition.class);
+            if (idleForAsyncTasks) {
+                if (!asyncTaskMonitor.isIdleNow()) {
+                    asyncTaskMonitor.notifyWhenIdle(new SignalingTask<Void>(NO_OP,
+                            IdleCondition.ASYNC_TASKS_HAVE_IDLED, generation));
 
-        condChecks.add(IdleCondition.ASYNC_TASKS_HAVE_IDLED);
-      }
+                    condChecks.add(IdleCondition.ASYNC_TASKS_HAVE_IDLED);
+                }
 
-      if (!compatIdle()) {
-        compatTaskMonitor.get().notifyWhenIdle(new SignalingTask<Void>(NO_OP,
-            IdleCondition.COMPAT_TASKS_HAVE_IDLED, generation));
-        condChecks.add(IdleCondition.COMPAT_TASKS_HAVE_IDLED);
-      }
+                if (!compatIdle()) {
+                    compatTaskMonitor.get().notifyWhenIdle(new SignalingTask<Void>(NO_OP,
+                            IdleCondition.COMPAT_TASKS_HAVE_IDLED, generation));
+                    condChecks.add(IdleCondition.COMPAT_TASKS_HAVE_IDLED);
+                }
 
-      if (!idlingResourceRegistry.allResourcesAreIdle()) {
-        final IdlingPolicy warning = IdlingPolicies.getDynamicIdlingResourceWarningPolicy();
-        final IdlingPolicy error = IdlingPolicies.getDynamicIdlingResourceErrorPolicy();
-        final SignalingTask<Void> idleSignal = new SignalingTask<Void>(NO_OP,
-            IdleCondition.DYNAMIC_TASKS_HAVE_IDLED, generation);
-        idlingResourceRegistry.notifyWhenAllResourcesAreIdle(new IdleNotificationCallback() {
-          @Override
-          public void resourcesStillBusyWarning(List<String> busyResourceNames) {
-            warning.handleTimeout(busyResourceNames, "IdlingResources are still busy!");
-          }
+                if (!idlingResourceRegistry.allResourcesAreIdle()) {
+                    final IdlingPolicy warning = IdlingPolicies.getDynamicIdlingResourceWarningPolicy();
+                    final IdlingPolicy error = IdlingPolicies.getDynamicIdlingResourceErrorPolicy();
+                    final SignalingTask<Void> idleSignal = new SignalingTask<Void>(NO_OP,
+                            IdleCondition.DYNAMIC_TASKS_HAVE_IDLED, generation);
+                    idlingResourceRegistry.notifyWhenAllResourcesAreIdle(new IdleNotificationCallback() {
+                        @Override
+                        public void resourcesStillBusyWarning(List<String> busyResourceNames) {
+                            warning.handleTimeout(busyResourceNames, "IdlingResources are still busy!");
+                        }
 
-          @Override
-          public void resourcesHaveTimedOut(List<String> busyResourceNames) {
-            error.handleTimeout(busyResourceNames, "IdlingResources have timed out!");
-            controllerHandler.post(idleSignal);
-          }
+                        @Override
+                        public void resourcesHaveTimedOut(List<String> busyResourceNames) {
+                            error.handleTimeout(busyResourceNames, "IdlingResources have timed out!");
+                            controllerHandler.post(idleSignal);
+                        }
 
-          @Override
-          public void allResourcesIdle() {
-            controllerHandler.post(idleSignal);
-          }
-        });
-        condChecks.add(IdleCondition.DYNAMIC_TASKS_HAVE_IDLED);
-      }
+                        @Override
+                        public void allResourcesIdle() {
+                            controllerHandler.post(idleSignal);
+                        }
+                    });
+                    condChecks.add(IdleCondition.DYNAMIC_TASKS_HAVE_IDLED);
+                }
+            }
 
-      try {
-        loopUntil(condChecks);
-      } finally {
-        asyncTaskMonitor.cancelIdleMonitor();
-        if (compatTaskMonitor.isPresent()) {
-          compatTaskMonitor.get().cancelIdleMonitor();
-        }
-        idlingResourceRegistry.cancelIdleMonitor();
-      }
-    } while (!asyncTaskMonitor.isIdleNow() || !compatIdle()
-        || !idlingResourceRegistry.allResourcesAreIdle());
+            try {
+                loopUntil(condChecks);
+            } finally {
+                if (idleForAsyncTasks) {
+                    asyncTaskMonitor.cancelIdleMonitor();
+                    if (compatTaskMonitor.isPresent()) {
+                        compatTaskMonitor.get().cancelIdleMonitor();
+                    }
+                    idlingResourceRegistry.cancelIdleMonitor();
+                }
+            }
+        } while ((!asyncTaskMonitor.isIdleNow() || !compatIdle() || !idlingResourceRegistry.allResourcesAreIdle()) && idleForAsyncTasks);
 
-  }
+    }
 
   private boolean compatIdle() {
     if (compatTaskMonitor.isPresent()) {

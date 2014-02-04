@@ -1,9 +1,9 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
+import java.util.concurrent.TimeUnit;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * Allows users fine grain control over idling policies.
@@ -67,6 +67,16 @@ public final class IdlingPolicies {
         .withIdlingTimeout(timeout)
         .withIdlingTimeoutUnit(unit)
         .build();
+  }
+
+  /**
+   * This seems dumb to have so much abstraction and Builders and such here.
+   * @param wait
+   */
+  public static void setWaitForAsyncTasksPolicy(boolean wait) {
+      masterIdlingPolicy = masterIdlingPolicy.toBuilder()
+              .waitsForAsyncTasks(wait)
+              .build();
   }
 
 
