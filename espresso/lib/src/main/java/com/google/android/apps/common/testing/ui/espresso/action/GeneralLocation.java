@@ -75,7 +75,7 @@ public enum GeneralLocation implements CoordinatesProvider {
     BEGIN {
     @Override
       public float getPosition(int viewPos, int viewLength) {
-        return viewPos;
+        return viewPos + 1;
       }
     },
     MIDDLE {
@@ -87,7 +87,7 @@ public enum GeneralLocation implements CoordinatesProvider {
     END {
     @Override
       public float getPosition(int viewPos, int viewLength) {
-        return viewPos + viewLength;
+        return viewPos + viewLength - 1;
       }
     };
 

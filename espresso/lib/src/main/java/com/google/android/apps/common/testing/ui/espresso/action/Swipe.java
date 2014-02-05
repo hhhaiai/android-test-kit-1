@@ -1,13 +1,13 @@
 package com.google.android.apps.common.testing.ui.espresso.action;
 
-import static com.google.common.base.Preconditions.checkElementIndex;
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.google.android.apps.common.testing.ui.espresso.UiController;
-
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
+
+import com.google.android.apps.common.testing.ui.espresso.UiController;
+
+import static com.google.common.base.Preconditions.checkElementIndex;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Executes different swipe types to given positions.
@@ -51,9 +51,9 @@ public enum Swipe implements Swiper {
 
     float[][] res = new float[steps][2];
 
-    for (int i = 1; i < steps + 1; i++) {
-      res[i - 1][0] = start[0] + (end[0] - start[0]) * i / (steps + 2f);
-      res[i - 1][1] = start[1] + (end[1] - start[1]) * i / (steps + 2f);
+    for (int i = 0; i < steps; i++) {
+      res[i][0] = start[0] + (end[0] - start[0]) * i / (steps - 1f);
+      res[i][1] = start[1] + (end[1] - start[1]) * i / (steps - 1f);
     }
 
     return res;
