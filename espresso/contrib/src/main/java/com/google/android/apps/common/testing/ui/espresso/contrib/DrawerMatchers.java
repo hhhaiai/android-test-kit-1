@@ -1,13 +1,14 @@
 package com.google.android.apps.common.testing.ui.espresso.contrib;
 
-import com.google.android.apps.common.testing.ui.espresso.matcher.BoundedMatcher;
-
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.view.View;
 
+import com.google.android.apps.common.testing.ui.espresso.matcher.BoundedMatcher;
+
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
 
 /**
  * Hamcrest matchers for a {@link DrawerLayout}.
@@ -55,4 +56,21 @@ public final class DrawerMatchers {
       }
     };
   }
+
+    /**
+     * Returns a matcher that returns true only for DrawerLayouts.
+     */
+    public static Matcher<View> isDrawer() {
+        return new TypeSafeMatcher<View>() {
+            @Override
+            public boolean matchesSafely(View view) {
+                return view instanceof DrawerLayout;
+            }
+
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("is a drawer");
+            }
+        };
+    }
 }
