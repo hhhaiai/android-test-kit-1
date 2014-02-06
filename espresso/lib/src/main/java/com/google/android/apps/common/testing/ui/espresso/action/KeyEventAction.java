@@ -40,7 +40,7 @@ public final class KeyEventAction implements ViewAction {
   @Override
   public void perform(UiController uiController, View view) {
     try {
-      if (!view.getRootView().hasFocus()) {
+      if (view.isInTouchMode() || !view.getRootView().hasFocus()) {
         if (!view.requestFocus()) {
           Log.w(TAG, "No focused view and failed to request focus! Key event " + this.key + " may not be processed as expected.");
         }
