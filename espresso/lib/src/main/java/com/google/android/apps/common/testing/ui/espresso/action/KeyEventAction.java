@@ -1,7 +1,9 @@
 package com.google.android.apps.common.testing.ui.espresso.action;
 
-import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isDisplayed;
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.View;
 
 import com.google.android.apps.common.testing.testrunner.ActivityLifecycleMonitorRegistry;
 import com.google.android.apps.common.testing.testrunner.Stage;
@@ -12,12 +14,10 @@ import com.google.android.apps.common.testing.ui.espresso.UiController;
 import com.google.android.apps.common.testing.ui.espresso.ViewAction;
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
 
-import android.os.SystemClock;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.View;
-
 import org.hamcrest.Matcher;
+
+import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isDisplayed;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Enables pressing KeyEvents on views.
@@ -40,6 +40,11 @@ public final class KeyEventAction implements ViewAction {
   @Override
   public void perform(UiController uiController, View view) {
     try {
+      if (!view.getRootView().hasFocus()) {
+        if (!view.requestFocus()) {
+          Log.w(TAG, "No focused view and failed to request focus! Key event " + this.key + " may not be processed as expected.");
+        }
+      }
       if (!sendKeyEvent(uiController, view)) {
         Log.e(TAG, "Failed to inject key event: " + this.key);
         throw new PerformException.Builder()
