@@ -195,7 +195,7 @@ public final class ViewInteraction {
 
       final Throwable t[] = new Throwable[1];
       try {
-          long target = SystemClock.currentThreadTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit);
+          long target = SystemClock.elapsedRealtime() + TimeUnit.MILLISECONDS.convert(timeout, unit);
           while (true) {
               runSynchronouslyOnUiThread(new Runnable() {
                   @Override
@@ -211,12 +211,12 @@ public final class ViewInteraction {
                   }
               });
 
-              if (t[0] == null || SystemClock.currentThreadTimeMillis() >= target)
+              if (t[0] == null || SystemClock.elapsedRealtime() >= target)
                   break;
 
               try {
                   synchronized (notifier) {
-                      notifier.wait(Math.max(0, target - SystemClock.currentThreadTimeMillis()));
+                      notifier.wait(Math.max(0, target - SystemClock.elapsedRealtime()));
                   }
               } catch (InterruptedException e) { /* go round again */ }
           }
