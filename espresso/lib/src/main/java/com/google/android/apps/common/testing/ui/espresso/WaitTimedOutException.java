@@ -17,6 +17,6 @@ public class WaitTimedOutException extends RuntimeException implements EspressoE
 
     @Override
     public String getMessage() {
-        return String.format("Wait timed out after %d %s: %s", mTimeout, mTimeUnit.toString(), getCause().getMessage());
+        return String.format("Wait timed out after %f %s: %s", mTimeout, mTimeUnit.toString(), getCause().getMessage());
     }
 }
