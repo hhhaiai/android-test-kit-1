@@ -1,10 +1,10 @@
 package com.google.android.apps.common.testing.ui.espresso.action;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.view.KeyEvent;
 
 import com.google.android.apps.common.testing.ui.espresso.ViewAction;
 
-import android.view.KeyEvent;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A collection of common {@link ViewActions}.
@@ -77,6 +77,16 @@ public final class ViewActions {
   }
 
   /**
+   * Returns an action that swipes across only a centered portion (specified by percentWith) across the the vertical center of the view.
+   * @param percentWidth
+   * @return
+   */
+  public static ViewAction swipeLeft(double percentWidth) {
+    return new GeneralSwipeAction(Swipe.FAST, new InterpolatedLocation(GeneralLocation.CENTER, GeneralLocation.CENTER_RIGHT, percentWidth),
+        new InterpolatedLocation(GeneralLocation.CENTER, GeneralLocation.CENTER_LEFT, percentWidth), Press.FINGER);
+  }
+
+  /**
    * Returns an action that performs a swipe left-to-right across the vertical center of the
    * view.<br>
    * <br>
@@ -88,6 +98,16 @@ public final class ViewActions {
   public static ViewAction swipeRight() {
     return new GeneralSwipeAction(Swipe.FAST, GeneralLocation.CENTER_LEFT,
         GeneralLocation.CENTER_RIGHT, Press.FINGER);
+  }
+
+  /**
+   * Returns an action that swipes across only a centered portion (specified by percentWith) across the the vertical center of the view.
+   * @param percentWidth
+   * @return
+   */
+  public static ViewAction swipeRight(double percentWidth) {
+    return new GeneralSwipeAction(Swipe.FAST, new InterpolatedLocation(GeneralLocation.CENTER, GeneralLocation.CENTER_LEFT, percentWidth),
+        new InterpolatedLocation(GeneralLocation.CENTER, GeneralLocation.CENTER_RIGHT, percentWidth), Press.FINGER);
   }
 
   /**
