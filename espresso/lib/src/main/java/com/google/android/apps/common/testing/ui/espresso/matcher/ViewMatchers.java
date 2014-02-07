@@ -1,14 +1,5 @@
 package com.google.android.apps.common.testing.ui.espresso.matcher;
 
-import static com.google.android.apps.common.testing.ui.espresso.util.TreeIterables.breadthFirstViewTraversal;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static org.hamcrest.Matchers.is;
-
-import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.view.View;
@@ -19,6 +10,11 @@ import android.view.inputmethod.InputConnection;
 import android.widget.Checkable;
 import android.widget.TextView;
 
+import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+
 import junit.framework.AssertionFailedError;
 
 import org.hamcrest.Description;
@@ -27,7 +23,15 @@ import org.hamcrest.Matchers;
 import org.hamcrest.StringDescription;
 import org.hamcrest.TypeSafeMatcher;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+
+import static com.google.android.apps.common.testing.ui.espresso.util.TreeIterables.breadthFirstViewTraversal;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static org.hamcrest.Matchers.is;
 
 /**
  * A collection of hamcrest matchers that match {@link View}s.
@@ -56,7 +60,7 @@ public final class ViewMatchers {
     };
   }
 
- /**
+  /**
    * Returns a matcher that matches Views with class name matching the given matcher.
    */
   public static Matcher<View> withClassName(final Matcher<String> classNameMatcher) {
@@ -134,11 +138,125 @@ public final class ViewMatchers {
           return false;
         }
         double maxArea = view.getHeight() * view.getWidth();
-        double visibleArea = visibleParts.height() * visibleParts.width();
+        ArrayList<Rect> visibleAreaRects = Lists.newArrayList(visibleParts);
+
+        ArrayList<View> covers = getPotentialCovers(view);
+        Rect vr = new Rect();
+        ArrayList<Rect> scratch = new ArrayList<Rect>();
+        for (View cover : covers) {
+          if (cover.getGlobalVisibleRect(vr)) {
+            for (Rect visRect : visibleAreaRects) {
+              scratch.addAll(subtractRect(visRect, vr));
+            }
+            ArrayList<Rect> t = visibleAreaRects;
+            visibleAreaRects = scratch;
+            scratch = t;
+            scratch.clear();
+          }
+        }
+
+        double visibleArea = 0;
+        for (Rect r : visibleAreaRects)
+          visibleArea += r.height() * r.width();
+
         int displayedPercentage = (int) ((visibleArea / maxArea) * 100);
 
         return displayedPercentage >= areaPercentage
             && withEffectiveVisibility(Visibility.VISIBLE).matches(view);
+      }
+
+      /**
+       * Returns a list of between 0 and 4 rectangles that represent the area covered by start, that is not covered by cutout.
+       * @param start
+       * @param cutout NOTE: this parameter gets modified. It will be clipped to be solely the intersection between it and start.
+       * @return
+       */
+      private List<Rect> subtractRect(Rect start, Rect cutout) {
+        if (!cutout.intersect(start))
+          return Collections.singletonList(start);
+
+        // also serves as "4 sides incident" case
+        if (cutout.contains(start))
+          return Collections.emptyList();
+
+        // 3 sides incident
+        if (start.right == cutout.right && start.bottom == cutout.bottom && start.left == cutout.left)                        // cutout is bottom
+          return Collections.singletonList(new Rect(start.left, start.top, start.right, cutout.top));                           // top
+        if (start.bottom == cutout.bottom && start.left == cutout.left && start.top == cutout.top)                            // cutout is left
+          return Collections.singletonList(new Rect(cutout.right, start.top, start.right, start.bottom));                       // right
+        if (start.left == cutout.left && start.top == cutout.top && start.right == cutout.right)                              // cutout is top
+          return Collections.singletonList(new Rect(start.left, cutout.bottom, start.right, start.bottom));                     // bottom
+        if (start.top == cutout.top && start.right == cutout.right && start.bottom == cutout.bottom)                          // cutout is right
+          return Collections.singletonList(new Rect(start.left, start.top, cutout.left, start.bottom));                         // left
+
+        // 2 sides incident, corner
+        if (start.right == cutout.right && start.bottom == cutout.bottom)                                                     // bottom right corner
+          return Lists.newArrayList(new Rect(start.left, start.top, start.right, cutout.top),                                   // top
+              new Rect(start.left, cutout.top, cutout.left, start.bottom));                               // bottom left
+        if (start.bottom == cutout.bottom && start.left == cutout.left)                                                       // bottom left corner
+          return Lists.newArrayList(new Rect(start.left, start.top, start.right, cutout.top),                                   // top
+              new Rect(cutout.right, cutout.top, start.right, start.bottom));                             // bottom right
+        if (start.left == cutout.left && start.top == cutout.top)                                                             // top left
+          return Lists.newArrayList(new Rect(cutout.right, start.top, start.right, start.bottom),                               // right
+              new Rect(start.left, cutout.bottom, cutout.right, start.bottom));                           // bottom left
+        if (start.top == cutout.top && start.right == cutout.right)                                                           // top right
+          return Lists.newArrayList(new Rect(start.left, start.top, cutout.left, cutout.bottom),                                // upper left
+              new Rect(start.left, cutout.bottom, start.right, start.bottom));                            // bottom
+        // 2 sides incident, cleaving rect
+        if (start.top == cutout.top && start.bottom == cutout.bottom)                                                         // cut vertically
+          return Lists.newArrayList(new Rect(start.left, start.top, cutout.left, start.bottom),                                 // left
+              new Rect(cutout.right, start.top, start.right, start.bottom));                              // right
+        if (start.left == cutout.left && start.right == cutout.right)                                                         // cut horizontally
+          return Lists.newArrayList(new Rect(start.left, start.top, start.right, cutout.top),                                   // top
+              new Rect(start.left, cutout.bottom, start.right, start.bottom));                            // bottom
+
+        // 1 side incident
+        if (start.right == cutout.right)                                                                                      // right
+          return Lists.newArrayList(new Rect(start.left, start.top, cutout.left, start.bottom),                                 // left
+              new Rect(cutout.left, start.top, start.right, cutout.top),                                  // top right
+              new Rect(cutout.left, cutout.bottom, start.right, start.bottom));                           // bottom right
+        if (start.bottom == cutout.bottom)                                                                                    // bottom
+          return Lists.newArrayList(new Rect(start.left, start.top, start.right, cutout.top),                                   // top
+              new Rect(start.left, cutout.top, cutout.left, start.bottom),                                // bottom left
+              new Rect(cutout.right, cutout.top, start.right, start.bottom));                             // bottom right
+        if (start.left == cutout.left)                                                                                        // left
+          return Lists.newArrayList(new Rect(cutout.right, start.top, start.right, start.bottom),                               // right
+              new Rect(start.left, start.top, cutout.right, cutout.top),                                  // top left
+              new Rect(start.left, cutout.bottom, cutout.right, start.bottom));                           // bottom left
+        if (start.top == cutout.top)                                                                                          // top
+          return Lists.newArrayList(new Rect(start.left, cutout.bottom, start.right, start.bottom),                             // bottom
+              new Rect(start.left, start.top, cutout.left, cutout.bottom),                                // top left
+              new Rect(cutout.right, start.top, start.right, cutout.bottom));                             // top right
+
+        // 0 sides incident (cutout is in the middle of start, no sides touching)
+        return Lists.newArrayList(new Rect(start.left, start.top, start.right, cutout.bottom),                                    // top
+            new Rect(start.left, cutout.top, cutout.left, cutout.bottom),                                   // middle left
+            new Rect(cutout.right, cutout.top, start.right, cutout.bottom),                                 // middle right
+            new Rect(start.left, cutout.bottom, start.right, start.bottom));                                // bottom
+      }
+
+      private ArrayList<View> getPotentialCovers(View v) {
+        if (!(v.getParent() instanceof ViewGroup)) {
+          return new ArrayList<View>();
+        }
+
+        // add my uncles that could cover me
+        ArrayList<View> list = getPotentialCovers(((View) v.getParent()));
+
+        // add my siblings that could cover me
+        ViewGroup parent = ((ViewGroup)v.getParent());
+        boolean found = false;
+        for (int i = 0; i < parent.getChildCount(); i++) {
+          if (!found && v == parent.getChildAt(i)) {
+            found = true;
+            continue;
+          }
+
+          if (found)
+            list.add(parent.getChildAt(i));
+        }
+
+        return list;
       }
     };
   }
@@ -544,7 +662,7 @@ public final class ViewMatchers {
       }
 
       private boolean checkAncestors(
-        ViewParent viewParent, Matcher<View> ancestorMatcher) {
+          ViewParent viewParent, Matcher<View> ancestorMatcher) {
         if (!(viewParent instanceof View)) {
           return false;
         }
@@ -625,7 +743,7 @@ public final class ViewMatchers {
     }
   }
 
-   /**
+  /**
    * A matcher that accepts a view if and only if the view's parent is accepted by the provided
    * matcher.
    *
@@ -647,7 +765,7 @@ public final class ViewMatchers {
     };
   }
 
-   /**
+  /**
    * A matcher that returns true if and only if the view's child is accepted by the provided
    * matcher.
    *
