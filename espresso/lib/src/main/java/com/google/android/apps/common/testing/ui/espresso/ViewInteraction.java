@@ -9,14 +9,12 @@ import android.widget.AdapterView;
 
 import com.google.android.apps.common.testing.ui.espresso.action.ScrollToAction;
 import com.google.android.apps.common.testing.ui.espresso.base.MainThread;
-import com.google.android.apps.common.testing.ui.espresso.base.RootViewPicker;
+import com.google.android.apps.common.testing.ui.espresso.matcher.RootMatchers;
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
 import com.google.common.base.Optional;
 
-import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.StringDescription;
-import org.hamcrest.TypeSafeMatcher;
 
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +92,11 @@ public final class ViewInteraction {
      */
     public ViewInteraction inRoot(Matcher<Root> rootMatcher) {
         this.rootMatcherRef.set(checkNotNull(rootMatcher));
+        return this;
+    }
+
+    public ViewInteraction inRoots(Matcher<Root> rootMatcher) {
+        this.rootMatcherRef.set(new RootMatchers.MultiRootMatcher(rootMatcher));
         return this;
     }
 
@@ -211,32 +214,6 @@ public final class ViewInteraction {
                             viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
                             t[0] = null;
                         } catch (NoMatchingViewException nmve) {
-                            // TODO: this is so hideous.. statics galore? iterate through all if we can't find one? too much state!!
-                            Matcher<Root> origMatcher = rootMatcherRef.get();
-                            RootViewPicker.CARE_ABOUT_FOCUS = false;
-                            for (final Root r : rootsOracle.get()) {
-                                inRoot(new TypeSafeMatcher<Root>() {
-                                    @Override
-                                    public boolean matchesSafely(Root root) {
-                                        return (root.getDecorView() == r.getDecorView());
-                                    }
-
-                                    @Override
-                                    public void describeTo(Description description) {
-                                        description.appendText("is " + r.toString());
-                                    }
-                                });
-                                try {
-                                    viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
-                                    nmve = null;
-                                } catch (NoMatchingViewException e) {
-                                } catch (NoMatchingRootException e) {
-                                    Log.e(TAG, "Looked for " + r, e);
-                                } catch (AssertionError e) {
-                                }
-                            }
-                            RootViewPicker.CARE_ABOUT_FOCUS = true;
-                            inRoot(origMatcher);
                             t[0] = nmve;
                         } catch (AssertionError ae) {
                             t[0] = ae;
