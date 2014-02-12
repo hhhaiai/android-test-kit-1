@@ -37,12 +37,12 @@ import static com.google.common.base.Preconditions.checkState;
 public final class ViewFinderImpl implements ViewFinder {
 
     private final Matcher<View> viewMatcher;
-    private final Provider<List<View>> rootViewProvider;
+    private final Provider<List<View>> rootViewsProvider;
 
     @Inject
-    ViewFinderImpl(Matcher<View> viewMatcher, Provider<List<View>> rootViewProvider) {
+    ViewFinderImpl(Matcher<View> viewMatcher, Provider<List<View>> rootViewsProvider) {
         this.viewMatcher = viewMatcher;
-        this.rootViewProvider = rootViewProvider;
+        this.rootViewsProvider = rootViewsProvider;
     }
 
     @Override
@@ -52,7 +52,7 @@ public final class ViewFinderImpl implements ViewFinder {
                 checkNotNull(viewMatcher));
 
         View matchedView = null;
-        List<View> roots = rootViewProvider.get();
+        List<View> roots = rootViewsProvider.get();
         Iterator<View> matchedViewIterator = Iterables.filter(
                 Iterables.concat(Lists.transform(roots, new Function<View, Iterable<View>>() {
                     @Nullable @Override
