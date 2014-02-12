@@ -194,6 +194,7 @@ public final class ViewInteraction {
             @Override
             public void run() {
                 // TODO: how can we find roots that are added *during* the wait?
+                // TODO: also, we should probably use a rootViewsProvider here now
                 for (Root r : rootsOracle.get()) {
                     ViewTreeObserver vto = r.getDecorView().getViewTreeObserver();
                     vto.addOnGlobalLayoutListener(layoutListener);
