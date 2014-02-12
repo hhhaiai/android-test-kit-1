@@ -1,17 +1,17 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.view.View;
 
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSet;
 
-import android.view.View;
-
 import org.hamcrest.Matcher;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * An exception which indicates that a Matcher<View> matched multiple views in the hierarchy when
@@ -33,7 +33,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
     implements EspressoException {
 
   private Matcher<? super View> viewMatcher;
-  private View rootView;
+  private List<View> rootViews;
   private View view1;
   private View view2;
   private View[] others;
@@ -46,7 +46,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
   private AmbiguousViewMatcherException(Builder builder) {
     super(getErrorMessage(builder));
     this.viewMatcher = builder.viewMatcher;
-    this.rootView = builder.rootView;
+    this.rootViews = builder.rootViews;
     this.view1 = builder.view1;
     this.view2 = builder.view2;
     this.others = builder.others;
@@ -57,7 +57,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
     if (builder.includeViewHierarchy) {
       ImmutableSet<View> ambiguousViews =
         ImmutableSet.<View>builder().add(builder.view1, builder.view2).add(builder.others).build();
-      errorMessage = HumanReadables.getViewHierarchyErrorMessage(builder.rootView,
+      errorMessage = HumanReadables.getViewHierarchyErrorMessage(builder.rootViews,
           Optional.of((List<View>) new ArrayList<View>(ambiguousViews)),
           String.format("'%s' matches multiple views in the hierarchy.", builder.viewMatcher),
           Optional.of("****MATCHES****"));
@@ -71,7 +71,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
   /** Builder for {@link AmbiguousViewMatcherException}. */
   public static class Builder {
     private Matcher<? super View> viewMatcher;
-    private View rootView;
+    private List<View> rootViews;
     private View view1;
     private View view2;
     private View[] others;
@@ -79,7 +79,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
 
     public Builder from(AmbiguousViewMatcherException exception) {
       this.viewMatcher = exception.viewMatcher;
-      this.rootView = exception.rootView;
+      this.rootViews = exception.rootViews;
       this.view1 = exception.view1;
       this.view2 = exception.view2;
       this.others = exception.others;
@@ -91,8 +91,8 @@ public final class AmbiguousViewMatcherException extends RuntimeException
       return this;
     }
 
-    public Builder withRootView(View rootView) {
-      this.rootView = rootView;
+    public Builder withRootViews(List<View> rootViews) {
+      this.rootViews = rootViews;
       return this;
     }
 
@@ -118,7 +118,7 @@ public final class AmbiguousViewMatcherException extends RuntimeException
 
     public AmbiguousViewMatcherException build() {
       checkNotNull(viewMatcher);
-      checkNotNull(rootView);
+      checkNotNull(rootViews);
       checkNotNull(view1);
       checkNotNull(view2);
       checkNotNull(others);
