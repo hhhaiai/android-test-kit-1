@@ -1,16 +1,16 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.view.View;
 
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
 
-import android.view.View;
-
 import org.hamcrest.Matcher;
 
 import java.util.List;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Indicates that a given matcher did not match any elements in the view hierarchy.
@@ -30,7 +30,7 @@ import java.util.List;
 public final class NoMatchingViewException extends RuntimeException implements EspressoException {
 
   private Matcher<? super View> viewMatcher;
-  private View rootView;
+  private List<View> rootViews;
   private List<View> adapterViews = Lists.newArrayList();
   private boolean includeViewHierarchy = true;
   private Optional<String> adapterViewWarning = Optional.<String>absent();
@@ -42,7 +42,7 @@ public final class NoMatchingViewException extends RuntimeException implements E
   private NoMatchingViewException(Builder builder) {
     super(getErrorMessage(builder));
     this.viewMatcher = builder.viewMatcher;
-    this.rootView = builder.rootView;
+    this.rootViews = builder.rootViews;
     this.adapterViews = builder.adapterViews;
     this.adapterViewWarning = builder.adapterViewWarning;
     this.includeViewHierarchy = builder.includeViewHierarchy;
@@ -58,7 +58,7 @@ public final class NoMatchingViewException extends RuntimeException implements E
       if (builder.adapterViewWarning.isPresent()) {
         message = message + builder.adapterViewWarning.get();
       }
-      errorMessage = HumanReadables.getViewHierarchyErrorMessage(builder.rootView, problemViews,
+      errorMessage = HumanReadables.getViewHierarchyErrorMessage(builder.rootViews, problemViews,
           message, problemViewSuffix);
     } else {
       errorMessage = String.format("Could not find a view that matches %s" , builder.viewMatcher);
@@ -70,14 +70,14 @@ public final class NoMatchingViewException extends RuntimeException implements E
   public static class Builder {
 
     private Matcher<? super View> viewMatcher;
-    private View rootView;
+    private List<View> rootViews;
     private List<View> adapterViews = Lists.newArrayList();
     private boolean includeViewHierarchy = true;
     private Optional<String> adapterViewWarning = Optional.<String>absent();
 
     public Builder from(NoMatchingViewException exception) {
       this.viewMatcher = exception.viewMatcher;
-      this.rootView = exception.rootView;
+      this.rootViews = exception.rootViews;
       this.adapterViews = exception.adapterViews;
       this.adapterViewWarning = exception.adapterViewWarning;
       this.includeViewHierarchy = exception.includeViewHierarchy;
@@ -89,8 +89,8 @@ public final class NoMatchingViewException extends RuntimeException implements E
       return this;
     }
 
-    public Builder withRootView(View rootView) {
-      this.rootView = rootView;
+    public Builder withRootView(List<View> rootViews) {
+      this.rootViews = rootViews;
       return this;
     }
 
@@ -111,7 +111,7 @@ public final class NoMatchingViewException extends RuntimeException implements E
 
     public NoMatchingViewException build() {
       checkNotNull(viewMatcher);
-      checkNotNull(rootView);
+      checkNotNull(rootViews);
       checkNotNull(adapterViews);
       checkNotNull(adapterViewWarning);
       return new NoMatchingViewException(this);
