@@ -50,6 +50,10 @@ public final class RootViewPicker implements Provider<List<View>> {
     private final ActivityLifecycleMonitor activityLifecycleMonitor;
     private final AtomicReference<Matcher<Root>> rootMatcherRef;
 
+    // this is really just used for composing error messages accurately since returning
+    // both the selected roots, and all roots from findRoots() would be hideous
+    private transient List<Root> allRoots;
+
     @Inject
     RootViewPicker(Provider<List<Root>> rootsOracle, UiController uiController,
                    ActivityLifecycleMonitor activityLifecycleMonitor,
@@ -88,7 +92,7 @@ public final class RootViewPicker implements Provider<List<View>> {
                         + " window focus and not be requesting layout for over 10 seconds. If you specified a"
                         + " non default root matcher, it may be picking roots that never take focus."
                         + " Otherwise, something is seriously wrong. Selected Roots:\n%s\n. All Roots:\n%s"
-                        , Joiner.on("\n").join(roots), Joiner.on("\n").join(rootsOracle.get())));
+                        , Joiner.on("\n").join(roots), Joiner.on("\n").join(allRoots)));
             }
 
             roots = findRoots(rootMatcher);
@@ -121,15 +125,15 @@ public final class RootViewPicker implements Provider<List<View>> {
     private List<Root> findRoots(Matcher<Root> rootMatcher) {
         waitForAtLeastOneActivityToBeResumed();
 
-        List<Root> roots = rootsOracle.get();
+        allRoots = rootsOracle.get();
 
         // TODO(user): move these checks into the RootsOracle.
-        if (roots.isEmpty()) {
+        if (allRoots.isEmpty()) {
             // Reflection broke
             throw new RuntimeException("No root window were discovered.");
         }
 
-        if (roots.size() > 1) {
+        if (allRoots.size() > 1) {
             // Multiple roots only occur:
             // when multiple activities are in some state of their lifecycle in the application
             // - we don't care about this, since we only want to interact with the RESUMED
@@ -141,20 +145,22 @@ public final class RootViewPicker implements Provider<List<View>> {
             // when an android.app.dialog is shown
             // - again, this is getting all the users attention, so it gets the test attention
             // too.
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, String.format("Multiple windows detected: %s", roots));
+
+            // If we're actually looking for multiple roots, obviously don't warn about it
+            if (Log.isLoggable(TAG, Log.VERBOSE) && !(rootMatcher instanceof RootMatchers.MultiRootMatcher)) {
+                Log.v(TAG, String.format("Multiple windows detected: %s", allRoots));
             }
         }
 
         List<Root> selectedRoots = Lists.newArrayList();
-        for (Root root : roots) {
+        for (Root root : allRoots) {
             if (rootMatcher.matches(root)) {
                 selectedRoots.add(root);
             }
         }
 
         if (selectedRoots.isEmpty()) {
-            throw NoMatchingRootException.create(rootMatcher, roots);
+            throw NoMatchingRootException.create(rootMatcher, allRoots);
         }
 
         if (rootMatcher instanceof RootMatchers.MultiRootMatcher)
