@@ -103,14 +103,14 @@ public final class RootViewPicker implements Provider<List<View>> {
         });
     }
 
-    private boolean isReady(List<Root> roots, boolean careAboutFocus) {
+    private boolean isReady(List<Root> roots, boolean ignoreFocus) {
         boolean ready = true;
         for (Root root : roots) {
             // Root is ready (i.e. UI is no longer in flux) if layout of the root view is not being
             // requested and the root view has window focus (if it is focusable).
             View rootView = root.getDecorView();
             if (!rootView.isLayoutRequested()) {
-                ready &= !careAboutFocus || rootView.hasWindowFocus() || !isFocusable().matches(root);
+                ready &= ignoreFocus || rootView.hasWindowFocus() || !isFocusable().matches(root);
             } else {
                 return false;
             }
