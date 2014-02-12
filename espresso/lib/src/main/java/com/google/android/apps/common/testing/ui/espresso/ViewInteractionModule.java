@@ -1,18 +1,20 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import android.view.View;
 
 import com.google.android.apps.common.testing.ui.espresso.base.RootViewPicker;
 import com.google.android.apps.common.testing.ui.espresso.base.ViewFinderImpl;
 import com.google.android.apps.common.testing.ui.espresso.matcher.RootMatchers;
 
-import android.view.View;
+import org.hamcrest.Matcher;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dagger.Module;
 import dagger.Provides;
 
-import org.hamcrest.Matcher;
-import java.util.concurrent.atomic.AtomicReference;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Adds the user interaction scope to the Espresso graph.
@@ -46,7 +48,7 @@ class ViewInteractionModule {
   }
 
   @Provides
-  public View provideRootView(RootViewPicker rootViewPicker) {
+  public List<View> provideRootView(RootViewPicker rootViewPicker) {
     // RootsOracle acts as a provider, but returning Providers is illegal, so delegate.
     return rootViewPicker.get();
   }

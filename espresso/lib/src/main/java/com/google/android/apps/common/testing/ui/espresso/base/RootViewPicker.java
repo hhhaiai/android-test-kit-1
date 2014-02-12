@@ -11,17 +11,21 @@ import com.google.android.apps.common.testing.ui.espresso.NoActivityResumedExcep
 import com.google.android.apps.common.testing.ui.espresso.NoMatchingRootException;
 import com.google.android.apps.common.testing.ui.espresso.Root;
 import com.google.android.apps.common.testing.ui.espresso.UiController;
+import com.google.android.apps.common.testing.ui.espresso.matcher.RootMatchers;
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 
 import org.hamcrest.Matcher;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -37,8 +41,7 @@ import static com.google.common.base.Preconditions.checkState;
  * This provider can only be accessed from the main thread.
  */
 @Singleton
-public final class RootViewPicker implements Provider<View> {
-    public static boolean CARE_ABOUT_FOCUS = true;
+public final class RootViewPicker implements Provider<List<View>> {
 
     private static final String TAG = RootViewPicker.class.getSimpleName();
 
@@ -47,7 +50,9 @@ public final class RootViewPicker implements Provider<View> {
     private final ActivityLifecycleMonitor activityLifecycleMonitor;
     private final AtomicReference<Matcher<Root>> rootMatcherRef;
 
-    private List<Root> roots;
+    // this is really just used for composing error messages accurately since returning
+    // both the selected roots, and all roots from findRoots() would be hideous
+    private transient List<Root> allRoots;
 
     @Inject
     RootViewPicker(Provider<List<Root>> rootsOracle, UiController uiController,
@@ -60,11 +65,11 @@ public final class RootViewPicker implements Provider<View> {
     }
 
     @Override
-    public View get() {
+    public List<View> get() {
         checkState(Looper.getMainLooper().equals(Looper.myLooper()), "must be called on main thread.");
         Matcher<Root> rootMatcher = rootMatcherRef.get();
 
-        Root root = findRoot(rootMatcher);
+        List<Root> roots = findRoots(rootMatcher);
 
         // we only want to propagate a root view that the user can interact with and is not
         // about to relay itself out. An app should be in this state the majority of the time,
@@ -72,7 +77,7 @@ public final class RootViewPicker implements Provider<View> {
         // we should come to it quickly enough.
         int loops = 0;
 
-        while (!isReady(root)) {
+        while (!isReady(roots, (rootMatcher instanceof RootMatchers.MultiRootMatcher))) {
             if (loops < 3) {
                 uiController.loopMainThreadUntilIdle();
             } else if (loops < 1001) {
@@ -83,42 +88,52 @@ public final class RootViewPicker implements Provider<View> {
             } else {
                 // we've waited for the root view to be fully laid out and have window focus
                 // for over 10 seconds. something is wrong.
-                throw new RuntimeException(String.format("Waited for the root of the view hierarchy to have"
+                throw new RuntimeException(String.format("Waited for the selected roots of the view hierarchy to have"
                         + " window focus and not be requesting layout for over 10 seconds. If you specified a"
-                        + " non default root matcher, it may be picking a root that never takes focus."
-                        + " Otherwise, something is seriously wrong. Selected Root:\n%s\n. All Roots:\n%s"
-                        , root, Joiner.on("\n").join(roots)));
+                        + " non default root matcher, it may be picking roots that never take focus."
+                        + " Otherwise, something is seriously wrong. Selected Roots:\n%s\n. All Roots:\n%s"
+                        , Joiner.on("\n").join(roots), Joiner.on("\n").join(allRoots)));
             }
 
-            root = findRoot(rootMatcher);
+            roots = findRoots(rootMatcher);
             loops++;
         }
 
-        return root.getDecorView();
+        return Lists.transform(roots, new Function<Root, View>() {
+            @Nullable @Override
+            public View apply(@Nullable Root root) {
+                return root.getDecorView();
+            }
+        });
     }
 
-    private boolean isReady(Root root) {
-        // Root is ready (i.e. UI is no longer in flux) if layout of the root view is not being
-        // requested and the root view has window focus (if it is focusable).
-        View rootView = root.getDecorView();
-        if (!rootView.isLayoutRequested()) {
-            return (rootView.hasWindowFocus() || !isFocusable().matches(root)) || !CARE_ABOUT_FOCUS;
+    private boolean isReady(List<Root> roots, boolean ignoreFocus) {
+        boolean ready = true;
+        for (Root root : roots) {
+            // Root is ready (i.e. UI is no longer in flux) if layout of the root view is not being
+            // requested and the root view has window focus (if it is focusable).
+            View rootView = root.getDecorView();
+            if (!rootView.isLayoutRequested()) {
+                ready &= ignoreFocus || rootView.hasWindowFocus() || !isFocusable().matches(root);
+            } else {
+                return false;
+            }
         }
-        return false;
+        return ready;
     }
 
-    private Root findRoot(Matcher<Root> rootMatcher) {
+    private List<Root> findRoots(Matcher<Root> rootMatcher) {
         waitForAtLeastOneActivityToBeResumed();
 
-        roots = rootsOracle.get();
+        allRoots = rootsOracle.get();
 
         // TODO(user): move these checks into the RootsOracle.
-        if (roots.isEmpty()) {
+        if (allRoots.isEmpty()) {
             // Reflection broke
             throw new RuntimeException("No root window were discovered.");
         }
 
-        if (roots.size() > 1) {
+        if (allRoots.size() > 1) {
             // Multiple roots only occur:
             // when multiple activities are in some state of their lifecycle in the application
             // - we don't care about this, since we only want to interact with the RESUMED
@@ -130,26 +145,30 @@ public final class RootViewPicker implements Provider<View> {
             // when an android.app.dialog is shown
             // - again, this is getting all the users attention, so it gets the test attention
             // too.
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, String.format("Multiple windows detected: %s", roots));
+
+            // If we're actually looking for multiple roots, obviously don't warn about it
+            if (Log.isLoggable(TAG, Log.VERBOSE) && !(rootMatcher instanceof RootMatchers.MultiRootMatcher)) {
+                Log.v(TAG, String.format("Multiple windows detected: %s", allRoots));
             }
         }
 
         List<Root> selectedRoots = Lists.newArrayList();
-        for (Root root : roots) {
+        for (Root root : allRoots) {
             if (rootMatcher.matches(root)) {
                 selectedRoots.add(root);
             }
         }
 
         if (selectedRoots.isEmpty()) {
-            throw NoMatchingRootException.create(rootMatcher, roots);
+            throw NoMatchingRootException.create(rootMatcher, allRoots);
         }
 
-        return reduceRoots(selectedRoots);
+        if (rootMatcher instanceof RootMatchers.MultiRootMatcher)
+            return selectedRoots;
+        else
+            return Collections.singletonList(pickBestRoot(selectedRoots));
     }
 
-    @SuppressWarnings("unused")
     private void waitForAtLeastOneActivityToBeResumed() {
         Collection<Activity> resumedActivities =
                 activityLifecycleMonitor.getActivitiesInStage(Stage.RESUMED);
@@ -185,7 +204,7 @@ public final class RootViewPicker implements Provider<View> {
         }
     }
 
-    private Root reduceRoots(List<Root> subpanels) {
+    private Root pickBestRoot(List<Root> subpanels) {
         Root topSubpanel = subpanels.get(0);
         if (subpanels.size() >= 1) {
             for (Root subpanel : subpanels) {

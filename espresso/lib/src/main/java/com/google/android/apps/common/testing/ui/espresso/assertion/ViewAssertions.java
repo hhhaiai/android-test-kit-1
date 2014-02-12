@@ -1,9 +1,7 @@
 package com.google.android.apps.common.testing.ui.espresso.assertion;
 
-import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.assertThat;
-import static com.google.android.apps.common.testing.ui.espresso.util.TreeIterables.breadthFirstViewTraversal;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.hamcrest.Matchers.is;
+import android.util.Log;
+import android.view.View;
 
 import com.google.android.apps.common.testing.ui.espresso.NoMatchingViewException;
 import com.google.android.apps.common.testing.ui.espresso.ViewAssertion;
@@ -13,17 +11,20 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 
-import android.util.Log;
-import android.view.View;
-
 import junit.framework.AssertionFailedError;
 
 import org.hamcrest.Matcher;
 import org.hamcrest.StringDescription;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+
+import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.assertThat;
+import static com.google.android.apps.common.testing.ui.espresso.util.TreeIterables.breadthFirstViewTraversal;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.hamcrest.Matchers.is;
 
 /**
  * A collection of common {@link ViewAssertion}s.
@@ -116,7 +117,7 @@ public final class ViewAssertions {
         }
 
         if (nonMatchingViews.size() > 0) {
-          String errorMessage = HumanReadables.getViewHierarchyErrorMessage(rootView,
+          String errorMessage = HumanReadables.getViewHierarchyErrorMessage(Collections.singletonList(rootView),
               Optional.of(nonMatchingViews),
               String.format("At least one view did not match the required matcher: %s", matcher),
               Optional.of("****DOES NOT MATCH****"));
