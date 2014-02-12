@@ -54,9 +54,9 @@ public final class HumanReadables {
                     String.format("\nProblem views are marked with '%s' below.", problemViewSuffix.get()));
         }
 
-        errorMessage.append("\n\nView Hierarchy:\n");
-
         for (View rootView : rootViews) {
+            errorMessage.append("\n\nView Hierarchy (root " + rootView.toString() + "):\n");
+
             Joiner.on("\n").appendTo(errorMessage, Iterables.transform(
                     depthFirstViewTraversalWithDistance(rootView), new Function<ViewAndDistance, String>() {
                 @Override
