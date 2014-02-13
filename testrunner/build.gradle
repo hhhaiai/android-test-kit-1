@@ -28,11 +28,7 @@ android {
     }
 }
 
-gradle.taskGraph.whenReady {
-    packageDebugJar {
-        exclude('**/ExposedInstrumentationApi.class')
-    }
-    packageReleaseJar {
-        exclude('**/ExposedInstrumentationApi.class')
-    }
+android.libraryVariants.all { variant ->
+    def jarTask = project.tasks.getByName("package${variant.name.capitalize()}Jar")
+    jarTask.excludes += '**/ExposedInstrumentationApi*'
 }
