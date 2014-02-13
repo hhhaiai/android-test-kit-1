@@ -31,3 +31,11 @@ android {
         exclude 'LICENSE.txt'
     }
 }
+
+android.libraryVariants.all { variant ->
+    project.tasks.getByName("assemble${variant.name.capitalize()}").doFirst({
+        if (JavaVersion.current() < JavaVersion.VERSION_1_7) {
+            throw new RuntimeException("Building espresso requires JDK 7 or above. We build against JDK 6, but a bug in its javac causes compilation failures.")
+        }
+    });
+}
