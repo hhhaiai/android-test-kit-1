@@ -30,6 +30,10 @@ android {
     packagingOptions {
         exclude 'LICENSE.txt'
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 android.libraryVariants.all { variant ->
