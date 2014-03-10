@@ -28,7 +28,7 @@ import org.hamcrest.Matcher;
 
 /**
  * Entry point to the Espresso framework. Test authors can initiate testing by using one of the on*
- * methods (e.g. onView) or perform top-level user actions (e.g. pressBack).
+ * methods (e.g. onView) or perform top-level user actions (e.g. sendBackKey).
  */
 public final class Espresso {
 
@@ -154,7 +154,7 @@ public final class Espresso {
    *         button would result in application closing.
    */
   public static void pressBack() {
-    onView(isRoot()).perform(ViewActions.pressBack());
+    onView(isRoot()).perform(ViewActions.sendBackKey());
   }
 
   /**

@@ -47,7 +47,7 @@ public final class ViewActions {
    * versus a normal tap.
    *
    * For example - if a long press on a particular view element opens a popup menu -
-   * ViewActions.pressBack() may be an acceptable rollback action.
+   * ViewActions.sendBackKey() may be an acceptable rollback action.
    *
    * <br>
    * View constraints:
@@ -128,7 +128,7 @@ public final class ViewActions {
   /**
    * Returns an action that clicks the back button.
    */
-  public static ViewAction pressBack() {
+  public static ViewAction sendBackKey() {
     return pressKey(KeyEvent.KEYCODE_BACK);
   }
 
