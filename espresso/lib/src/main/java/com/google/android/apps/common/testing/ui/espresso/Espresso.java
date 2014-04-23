@@ -51,7 +51,11 @@ public final class Espresso {
     return espressoGraph().plus(new ViewInteractionModule(viewMatcher)).get(ViewInteraction.class);
   }
 
-
+  public static WebElementInteraction onWebElement(final Matcher<WebElement> webElementMatcher) {
+    return espressoGraph()
+        .plus(new WebElementInteractionModule(webElementMatcher))
+        .get(WebElementInteraction.class);
+  }
 
   /**
    * Creates an {@link DataInteraction} for a data object displayed by the application. Use this
