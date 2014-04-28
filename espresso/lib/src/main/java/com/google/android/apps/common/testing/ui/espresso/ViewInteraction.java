@@ -260,4 +260,16 @@ public final class ViewInteraction {
             failureHandler.handle(ee.getCause(), viewMatcher);
         }
     }
+
+    // this is kind of a
+    public ViewInteraction waitForIdle() {
+        runSynchronouslyOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                uiController.loopMainThreadUntilIdle();
+            }
+        });
+
+        return this;
+    }
 }

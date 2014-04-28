@@ -52,7 +52,8 @@ public final class Espresso {
     }
 
     public static void waitForIdle() {
-        espressoGraph().plus(new BaseLayerModule()).get(UiController.class).loopMainThreadUntilIdle();
+//        espressoGraph().get(UiController.class).loopMainThreadUntilIdle();
+        onView(isRoot()).waitForIdle();
     }
 
     /**
