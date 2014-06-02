@@ -272,4 +272,51 @@ public final class ViewInteraction {
 
         return this;
     }
+
+    /**
+     * @return the current {@link View} if it exists.
+     */
+    public View get() {
+        ExistsRunnable existsRunnable = new ExistsRunnable();
+        runSynchronouslyOnUiThread(existsRunnable);
+        while (!existsRunnable.done) {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) { /* ignore */ }
+        }
+        return existsRunnable.foundView;
+    }
+
+    /**
+     * @return if this {@link View} exists.
+     */
+    public boolean exists() {
+        ExistsRunnable existsRunnable = new ExistsRunnable();
+        runSynchronouslyOnUiThread(existsRunnable);
+        while (!existsRunnable.done) {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) { /* ignore */ }
+        }
+        return existsRunnable.exists;
+    }
+
+    private class ExistsRunnable implements Runnable {
+        View foundView;
+        boolean exists = false;
+        boolean done = false;
+
+        @Override
+        public void run() {
+            uiController.loopMainThreadUntilIdle();
+            Optional<View> targetView = Optional.absent();
+            try {
+                targetView = Optional.of(viewFinder.getView());
+            } catch (NoMatchingViewException nsve) { /* ignore */ }
+            foundView = targetView.get();
+            exists = targetView.isPresent();
+            done = true;
+        }
+    }
+
 }
