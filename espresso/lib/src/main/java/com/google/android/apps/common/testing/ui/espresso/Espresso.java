@@ -1,5 +1,23 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
+import android.content.Context;
+import android.os.Build;
+import android.os.Looper;
+import android.view.View;
+import android.view.ViewConfiguration;
+
+import com.google.android.apps.common.testing.ui.espresso.action.ViewActions;
+import com.google.android.apps.common.testing.ui.espresso.base.BaseLayerModule;
+import com.google.android.apps.common.testing.ui.espresso.base.IdlingResourceRegistry;
+import com.google.android.apps.common.testing.ui.espresso.base.Screenshotter;
+import com.google.android.apps.common.testing.ui.espresso.util.TreeIterables;
+
+import org.hamcrest.Matcher;
+
+import java.io.File;
+
+import dagger.ObjectGraph;
+
 import static com.google.android.apps.common.testing.ui.espresso.action.ViewActions.click;
 import static com.google.android.apps.common.testing.ui.espresso.action.ViewActions.pressMenuKey;
 import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.isDisplayed;
@@ -10,21 +28,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.endsWith;
-
-import com.google.android.apps.common.testing.ui.espresso.action.ViewActions;
-import com.google.android.apps.common.testing.ui.espresso.base.BaseLayerModule;
-import com.google.android.apps.common.testing.ui.espresso.base.IdlingResourceRegistry;
-import com.google.android.apps.common.testing.ui.espresso.util.TreeIterables;
-
-import android.content.Context;
-import android.os.Build;
-import android.os.Looper;
-import android.view.View;
-import android.view.ViewConfiguration;
-
-import dagger.ObjectGraph;
-
-import org.hamcrest.Matcher;
 
 /**
  * Entry point to the Espresso framework. Test authors can initiate testing by using one of the on*
@@ -158,6 +161,10 @@ public final class Espresso {
      */
     public static void pressBack() {
         onView(isRoot()).perform(ViewActions.sendBackKey());
+    }
+
+    public static void screenshot(File path) {
+        espressoGraph().get(Screenshotter.class).snapToFile(path);
     }
 
     /**

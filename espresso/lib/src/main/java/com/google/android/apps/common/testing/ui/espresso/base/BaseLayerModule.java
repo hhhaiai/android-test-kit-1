@@ -29,7 +29,7 @@ import javax.inject.Singleton;
  * Dagger module for creating the implementation classes within the base package.
  */
 @Module(library = true, injects = {
-    BaseLayerModule.FailureHandlerHolder.class, FailureHandler.class})
+    BaseLayerModule.FailureHandlerHolder.class, FailureHandler.class, Screenshotter.class})
 public class BaseLayerModule {
 
   @Provides @Singleton
