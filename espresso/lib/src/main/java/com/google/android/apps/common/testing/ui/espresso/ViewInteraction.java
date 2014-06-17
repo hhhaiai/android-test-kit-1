@@ -1,5 +1,8 @@
 package com.google.android.apps.common.testing.ui.espresso;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
@@ -7,15 +10,23 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.AdapterView;
 
+import com.google.android.apps.common.testing.testrunner.inject.TargetContext;
 import com.google.android.apps.common.testing.ui.espresso.action.ScrollToAction;
 import com.google.android.apps.common.testing.ui.espresso.base.MainThread;
+import com.google.android.apps.common.testing.ui.espresso.base.Screenshotter;
 import com.google.android.apps.common.testing.ui.espresso.matcher.RootMatchers;
 import com.google.android.apps.common.testing.ui.espresso.util.HumanReadables;
+import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 
 import org.hamcrest.Matcher;
 import org.hamcrest.StringDescription;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -51,7 +62,11 @@ public final class ViewInteraction {
     private final Matcher<View> viewMatcher;
     private final AtomicReference<Matcher<Root>> rootMatcherRef;
     private final Provider<List<Root>> rootsOracle;
+    private final Screenshotter screenshotter;
+    private final File outdir;
+    private final SimpleDateFormat dateFormat;
 
+    @SuppressLint("NewApi")
     @Inject
     ViewInteraction(
             UiController uiController,
@@ -60,7 +75,8 @@ public final class ViewInteraction {
             FailureHandler failureHandler,
             Matcher<View> viewMatcher,
             AtomicReference<Matcher<Root>> rootMatcherRef,
-            Provider<List<Root>> rootsOracle) {
+            Provider<List<Root>> rootsOracle, Screenshotter screenshotter, @TargetContext Context context) {
+        this.screenshotter = screenshotter;
         this.viewFinder = checkNotNull(viewFinder);
         this.uiController = checkNotNull(uiController);
         this.failureHandler = checkNotNull(failureHandler);
@@ -68,6 +84,8 @@ public final class ViewInteraction {
         this.viewMatcher = checkNotNull(viewMatcher);
         this.rootMatcherRef = checkNotNull(rootMatcherRef);
         this.rootsOracle = checkNotNull(rootsOracle);
+        this.outdir = new File(Objects.firstNonNull(((Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO) ? null : context.getExternalFilesDir(null)), context.getFilesDir()), "test-results");
+        dateFormat = new SimpleDateFormat("HH':'mm':'ss.SSS");
     }
 
     /**
@@ -100,6 +118,21 @@ public final class ViewInteraction {
         return this;
     }
 
+    private void takeScreenshot() {
+        File f = new File(outdir, String.format("snapshot-%s.jpg", dateFormat.format(new Date())));
+        Bitmap bmp = screenshotter.snap();
+        try {
+            FileOutputStream fos = new FileOutputStream(f);
+            try {
+                bmp.compress(Bitmap.CompressFormat.JPEG, 5, fos);
+            } finally {
+                fos.close();
+            }
+        } catch (IOException e) {
+            // swallow
+        }
+    }
+
     private void doPerform(final ViewAction viewAction) {
         checkNotNull(viewAction);
         final Matcher<? extends View> constraints = checkNotNull(viewAction.getConstraints());
@@ -108,6 +141,7 @@ public final class ViewInteraction {
             @Override
             public void run() {
                 uiController.loopMainThreadUntilIdle();
+                takeScreenshot();
                 View targetView = viewFinder.getView();
                 Log.i(TAG, String.format(
                         "Performing '%s' action on view %s", viewAction.getDescription(), viewMatcher));
@@ -150,6 +184,8 @@ public final class ViewInteraction {
             @Override
             public void run() {
                 uiController.loopMainThreadUntilIdle();
+
+                takeScreenshot();
 
                 Optional<View> targetView = Optional.absent();
                 Optional<NoMatchingViewException> missingViewException = Optional.absent();
@@ -195,6 +231,8 @@ public final class ViewInteraction {
                             vto.addOnGlobalLayoutListener(layoutListener);
                             observers.put(dv, vto);
                         }
+
+                        takeScreenshot();
 
                         try {
                             viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
