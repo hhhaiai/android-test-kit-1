@@ -65,6 +65,8 @@ public class Screenshotter {
 
                     dv.buildDrawingCache();
                     Bitmap cache = dv.getDrawingCache();
+                    if (cache == null) // handle the case for WILL_NOT_CACHE_DRAWING
+                        continue;
                     Gravity.apply(lp.gravity, cache.getWidth(), cache.getHeight(), container, placement);
                     placement.offset(lp.x, lp.y);
                     c.drawBitmap(cache, new Rect(0, 0, cache.getWidth(), cache.getHeight()), placement, p);
@@ -74,7 +76,11 @@ public class Screenshotter {
                 return screenshot;
             }
         });
-        new Handler(mainLooper).post(task);
+        if (Looper.myLooper() == mainLooper) {
+            task.run();
+        } else {
+            new Handler(mainLooper).post(task);
+        }
 
         try {
             return task.get();
