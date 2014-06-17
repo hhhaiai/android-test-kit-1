@@ -16,7 +16,7 @@ import com.google.common.base.Optional;
 import org.hamcrest.Matcher;
 import org.hamcrest.StringDescription;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -164,10 +164,11 @@ public final class ViewInteraction {
         return this;
     }
 
+    private static final int WAITFOR_CHECK_DELAY = 250; // wait at most 250ms between both looking for the view, and looking for new roots (VTOs can still wake us sooner)
     public ViewInteraction waitFor(long timeout, TimeUnit unit, final ViewAssertion viewAssert) {
         checkNotNull(viewAssert);
 
-        final HashSet<ViewTreeObserver> observers = new HashSet<ViewTreeObserver>();
+        final HashMap<View, ViewTreeObserver> observers = new HashMap<View, ViewTreeObserver>();
         final Object notifier = new Object();
         final ViewTreeObserver.OnGlobalLayoutListener layoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -177,32 +178,6 @@ public final class ViewInteraction {
                 }
             }
         };
-//      final ViewTreeObserver.OnWindowFocusChangeListener windowListener = new ViewTreeObserver.OnWindowFocusChangeListener() {
-//          @Override
-//          public void onWindowFocusChanged(boolean hasFocus) {
-//              synchronized (notifier) {
-//                  ViewTreeObserver vto = rootViewPicker.get().getViewTreeObserver();
-//                  vto.addOnGlobalLayoutListener(layoutListener);
-//                  vto.addOnWindowFocusChangeListener(this);
-//                  observers.add(vto);
-//                  notifier.notifyAll();
-//              }
-//          }
-//      };
-
-        runSynchronouslyOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                // TODO: how can we find roots that are added *during* the wait?
-                // TODO: also, we should probably use a rootViewsProvider here now
-                for (Root r : rootsOracle.get()) {
-                    ViewTreeObserver vto = r.getDecorView().getViewTreeObserver();
-                    vto.addOnGlobalLayoutListener(layoutListener);
-//                  vto.addOnWindowFocusChangeListener(windowListener);
-                    observers.add(vto);
-                }
-            }
-        });
 
         final Throwable t[] = new Throwable[1];
         try {
@@ -211,6 +186,16 @@ public final class ViewInteraction {
                 runSynchronouslyOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        for (Root r : rootsOracle.get()) {
+                            View dv = r.getDecorView();
+                            if (observers.containsKey(dv))
+                                continue;
+
+                            ViewTreeObserver vto = dv.getViewTreeObserver();
+                            vto.addOnGlobalLayoutListener(layoutListener);
+                            observers.put(dv, vto);
+                        }
+
                         try {
                             viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
                             t[0] = null;
@@ -227,19 +212,18 @@ public final class ViewInteraction {
 
                 try {
                     synchronized (notifier) {
-                        notifier.wait(Math.max(0, target - SystemClock.elapsedRealtime()));
+                        notifier.wait(Math.min(WAITFOR_CHECK_DELAY, Math.max(0, target - SystemClock.elapsedRealtime())));
                     }
                 } catch (InterruptedException e) { /* go round again */ }
             }
         } finally {
-            for (ViewTreeObserver vto : observers) {
+            for (ViewTreeObserver vto : observers.values()) {
                 if (!vto.isAlive())
                     continue;
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
                     vto.removeGlobalOnLayoutListener(layoutListener);
                 else
                     vto.removeOnGlobalLayoutListener(layoutListener);
-//              vto.removeOnWindowFocusChangeListener(windowListener);
             }
         }
 
