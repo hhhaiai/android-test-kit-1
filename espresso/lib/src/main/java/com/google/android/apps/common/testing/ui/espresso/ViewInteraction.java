@@ -201,7 +201,7 @@ public final class ViewInteraction {
     }
 
     private static final int WAITFOR_CHECK_DELAY = 250; // wait at most 250ms between both looking for the view, and looking for new roots (VTOs can still wake us sooner)
-    public ViewInteraction waitFor(long timeout, TimeUnit unit, final ViewAssertion viewAssert) {
+    public ViewInteraction waitFor(double timeout, final ViewAssertion viewAssert) {
         checkNotNull(viewAssert);
 
         final HashMap<View, ViewTreeObserver> observers = new HashMap<View, ViewTreeObserver>();
@@ -217,7 +217,7 @@ public final class ViewInteraction {
 
         final Throwable t[] = new Throwable[1];
         try {
-            long target = SystemClock.elapsedRealtime() + TimeUnit.MILLISECONDS.convert(timeout, unit);
+            long target = SystemClock.elapsedRealtime() + (long)(timeout * 1000);
             while (true) {
                 runSynchronouslyOnUiThread(new Runnable() {
                     @Override
@@ -266,7 +266,7 @@ public final class ViewInteraction {
         }
 
         if (t[0] != null)
-            throw new WaitTimedOutException(timeout, unit, t[0]);
+            throw new WaitTimedOutException(timeout, t[0]);
 
         return this;
     }

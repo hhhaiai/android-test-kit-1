@@ -7,16 +7,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class WaitTimedOutException extends RuntimeException implements EspressoException {
     private final double mTimeout;
-    private final TimeUnit mTimeUnit;
 
-    public WaitTimedOutException(double timeout, TimeUnit unit, Throwable throwable) {
+    public WaitTimedOutException(double timeout, Throwable throwable) {
         super(throwable);
         mTimeout = timeout;
-        mTimeUnit = unit;
     }
 
     @Override
     public String getMessage() {
-        return String.format("Wait timed out after %f %s: %s", mTimeout, mTimeUnit.toString(), getCause().getMessage());
+        return String.format("Wait timed out after %f seconds: %s", mTimeout, getCause().getMessage());
     }
 }
