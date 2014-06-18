@@ -120,15 +120,15 @@ public final class ViewInteraction {
 
     private void takeScreenshot() {
         File f = new File(outdir, String.format("snapshot-%s.jpg", dateFormat.format(new Date())));
-        Bitmap bmp = screenshotter.snap();
         try {
+            Bitmap bmp = screenshotter.snap();
             FileOutputStream fos = new FileOutputStream(f);
             try {
                 bmp.compress(Bitmap.CompressFormat.JPEG, 5, fos);
             } finally {
                 fos.close();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             // swallow
         }
     }
