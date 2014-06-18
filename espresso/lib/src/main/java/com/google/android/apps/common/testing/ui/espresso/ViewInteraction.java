@@ -334,7 +334,11 @@ public final class ViewInteraction {
             Optional<View> targetView = Optional.absent();
             try {
                 targetView = Optional.of(viewFinder.getView());
-            } catch (NoMatchingViewException nsve) { /* ignore */ }
+            } catch (NoMatchingViewException nsve) {
+                exists = false;
+                done = true;
+                return;
+            }
             foundView = targetView.get();
             exists = targetView.isPresent();
             done = true;
