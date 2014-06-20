@@ -295,6 +295,7 @@ final class UiControllerImpl implements UiController, Handler.Callback {
         checkState(Looper.myLooper() == mainLooper, "Expecting to be on main thread!");
         // TODO: figure out how to break each of these conditions apart and make them settable via defaults and per interaction
         final boolean idleForAsyncTasks = IdlingPolicies.getMasterIdlingPolicy().shouldWaitForAsyncTasks();
+        Log.d(TAG, "idleForAsyncTasks: " + idleForAsyncTasks);
         do {
             EnumSet<IdleCondition> condChecks = EnumSet.noneOf(IdleCondition.class);
             if (idleForAsyncTasks) {
