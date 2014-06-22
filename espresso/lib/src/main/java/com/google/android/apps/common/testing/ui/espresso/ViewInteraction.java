@@ -55,6 +55,8 @@ public final class ViewInteraction {
 
     private static final String TAG = ViewInteraction.class.getSimpleName();
 
+    private static final int WAITFOR_CHECK_DELAY = 250; // wait at most 250ms between both looking for the view, and looking for new roots (VTOs can still wake us sooner)
+
     private final UiController uiController;
     private final ViewFinder viewFinder;
     private final Executor mainThreadExecutor;
@@ -64,7 +66,11 @@ public final class ViewInteraction {
     private final Provider<List<Root>> rootsOracle;
     private final Screenshotter screenshotter;
     private final File outdir;
+
     private final SimpleDateFormat dateFormat;
+
+    private double timeout;
+    private ViewAssertion defaultPrecondition;
 
     @SuppressLint("NewApi")
     @Inject
@@ -75,7 +81,9 @@ public final class ViewInteraction {
             FailureHandler failureHandler,
             Matcher<View> viewMatcher,
             AtomicReference<Matcher<Root>> rootMatcherRef,
-            Provider<List<Root>> rootsOracle, Screenshotter screenshotter, @TargetContext Context context) {
+            Provider<List<Root>> rootsOracle,
+            Screenshotter screenshotter,
+            @TargetContext Context context) {
         this.screenshotter = screenshotter;
         this.viewFinder = checkNotNull(viewFinder);
         this.uiController = checkNotNull(uiController);
@@ -85,8 +93,12 @@ public final class ViewInteraction {
         this.rootMatcherRef = checkNotNull(rootMatcherRef);
         this.rootsOracle = checkNotNull(rootsOracle);
         this.outdir = new File(Objects.firstNonNull(((Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO) ? null : context.getExternalFilesDir(null)), context.getFilesDir()), "test-results");
-        dateFormat = new SimpleDateFormat("HH':'mm':'ss.SSS");
+        this.dateFormat = new SimpleDateFormat("HH':'mm':'ss.SSS");
+
+        this.timeout = IdlingPolicies.getViewCheckTimeout();
+        this.defaultPrecondition = IdlingPolicies.getViewPerformPrecondition();
     }
+
 
     /**
      * Performs the given action(s) on the view selected by the current view matcher. If more than one
@@ -97,13 +109,19 @@ public final class ViewInteraction {
      * @return this interaction for further perform/verification calls.
      */
     public ViewInteraction perform(final ViewAction... viewActions) {
+        perform(defaultPrecondition, viewActions);
+        return this;
+    }
+
+    public ViewInteraction perform(final ViewAssertion precondition, final ViewAction... viewActions) {
         checkNotNull(viewActions);
+        if (precondition != null)
+            check(precondition);
         for (ViewAction action : viewActions) {
             doPerform(action);
         }
         return this;
     }
-
 
     /**
      * Makes this ViewInteraction scoped to the root selected by the given root matcher.
@@ -172,6 +190,11 @@ public final class ViewInteraction {
         });
     }
 
+    public ViewInteraction waitFor(double timeout) {
+        this.timeout = timeout;
+        return this;
+    }
+
     /**
      * Checks the given {@link ViewAssertion} on the the view selected by the current view matcher.
      *
@@ -179,29 +202,6 @@ public final class ViewInteraction {
      * @return this interaction for further perform/verification calls.
      */
     public ViewInteraction check(final ViewAssertion viewAssert) {
-        checkNotNull(viewAssert);
-        runSynchronouslyOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                uiController.loopMainThreadUntilIdle();
-
-                takeScreenshot();
-
-                Optional<View> targetView = Optional.absent();
-                Optional<NoMatchingViewException> missingViewException = Optional.absent();
-                try {
-                    targetView = Optional.of(viewFinder.getView());
-                } catch (NoMatchingViewException nsve) {
-                    missingViewException = Optional.of(nsve);
-                }
-                viewAssert.check(targetView, missingViewException);
-            }
-        });
-        return this;
-    }
-
-    private static final int WAITFOR_CHECK_DELAY = 250; // wait at most 250ms between both looking for the view, and looking for new roots (VTOs can still wake us sooner)
-    public ViewInteraction waitFor(double timeout, final ViewAssertion viewAssert) {
         checkNotNull(viewAssert);
 
         final HashMap<View, ViewTreeObserver> observers = new HashMap<View, ViewTreeObserver>();
