@@ -33,6 +33,50 @@ public class Screenshotter {
     private final RootsOracle rootsOracle;
     private final Looper mainLooper;
 
+    private class ScreenshotTask implements Callable<Bitmap> {
+        private List<Root> roots;
+
+        public ScreenshotTask(List<Root> roots) {
+            this.roots = roots;
+        }
+
+        @Override
+        public Bitmap call() throws Exception {
+            if (roots == null)
+                roots = rootsOracle.get();
+
+            if (roots.isEmpty()) {
+                throw new RuntimeException("No roots found.");
+            }
+
+            Display disp = ((WindowManager)roots.get(0).getDecorView().getContext().getSystemService(Service.WINDOW_SERVICE)).getDefaultDisplay();
+            DisplayMetrics dm = new DisplayMetrics();
+            disp.getMetrics(dm);
+            Bitmap screenshot = Bitmap.createBitmap(dm.widthPixels, dm.heightPixels, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(screenshot);
+            Paint p = new Paint();
+            Rect container = new Rect(0, 0, dm.widthPixels, dm.heightPixels);
+            Rect placement = new Rect();
+
+            for (int i = roots.size() - 1; i >= 0; i--) {
+                Root r = roots.get(i);
+                View dv = r.getDecorView();
+                WindowManager.LayoutParams lp = r.getWindowLayoutParams().get();
+
+                dv.buildDrawingCache();
+                Bitmap cache = dv.getDrawingCache();
+                if (cache == null) // handle the case for WILL_NOT_CACHE_DRAWING
+                    continue;
+                Gravity.apply(lp.gravity, cache.getWidth(), cache.getHeight(), container, placement);
+                placement.offset(lp.x, lp.y);
+                c.drawBitmap(cache, new Rect(0, 0, cache.getWidth(), cache.getHeight()), placement, p);
+                dv.destroyDrawingCache();
+            }
+
+            return screenshot;
+        }
+    }
+
     @Inject
     public Screenshotter(RootsOracle rootsOracle,
                          Looper mainLooper) {
@@ -40,42 +84,8 @@ public class Screenshotter {
         this.mainLooper = mainLooper;
     }
 
-    public Bitmap snap() {
-        FutureTask<Bitmap> task = new FutureTask<Bitmap>(new Callable<Bitmap>() {
-            @Override
-            public Bitmap call() throws Exception {
-                List<Root> roots = rootsOracle.get();
-                if (roots.isEmpty()) {
-                    throw new RuntimeException("No roots found.");
-                }
-
-                Display disp = ((WindowManager)roots.get(0).getDecorView().getContext().getSystemService(Service.WINDOW_SERVICE)).getDefaultDisplay();
-                DisplayMetrics dm = new DisplayMetrics();
-                disp.getMetrics(dm);
-                Bitmap screenshot = Bitmap.createBitmap(dm.widthPixels, dm.heightPixels, Bitmap.Config.ARGB_8888);
-                Canvas c = new Canvas(screenshot);
-                Paint p = new Paint();
-                Rect container = new Rect(0, 0, dm.widthPixels, dm.heightPixels);
-                Rect placement = new Rect();
-
-                for (int i = roots.size() - 1; i >= 0; i--) {
-                    Root r = roots.get(i);
-                    View dv = r.getDecorView();
-                    WindowManager.LayoutParams lp = r.getWindowLayoutParams().get();
-
-                    dv.buildDrawingCache();
-                    Bitmap cache = dv.getDrawingCache();
-                    if (cache == null) // handle the case for WILL_NOT_CACHE_DRAWING
-                        continue;
-                    Gravity.apply(lp.gravity, cache.getWidth(), cache.getHeight(), container, placement);
-                    placement.offset(lp.x, lp.y);
-                    c.drawBitmap(cache, new Rect(0, 0, cache.getWidth(), cache.getHeight()), placement, p);
-                    dv.destroyDrawingCache();
-                }
-
-                return screenshot;
-            }
-        });
+    /* package */ Bitmap snap(final List<Root> roots) {
+        FutureTask<Bitmap> task = new FutureTask<Bitmap>(new ScreenshotTask(roots));
         if (Looper.myLooper() == mainLooper) {
             task.run();
         } else {
@@ -89,8 +99,16 @@ public class Screenshotter {
         }
     }
 
+    public Bitmap snap() {
+        return snap(null);
+    }
+
     public void snapToFile(File path) {
-        Bitmap screenshot = snap();
+        snapToFile(path, null);
+    }
+
+    /* package */ void snapToFile(File path, List<Root> roots) {
+        Bitmap screenshot = snap(roots);
         try {
             FileOutputStream fos = new FileOutputStream(path);
             try {

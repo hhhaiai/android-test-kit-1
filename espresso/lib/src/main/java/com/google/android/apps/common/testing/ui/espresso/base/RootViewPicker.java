@@ -1,12 +1,16 @@
 package com.google.android.apps.common.testing.ui.espresso.base;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.os.Build;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
 import com.google.android.apps.common.testing.testrunner.ActivityLifecycleMonitor;
 import com.google.android.apps.common.testing.testrunner.Stage;
+import com.google.android.apps.common.testing.testrunner.inject.TargetContext;
 import com.google.android.apps.common.testing.ui.espresso.NoActivityResumedException;
 import com.google.android.apps.common.testing.ui.espresso.NoMatchingRootException;
 import com.google.android.apps.common.testing.ui.espresso.Root;
@@ -14,12 +18,16 @@ import com.google.android.apps.common.testing.ui.espresso.UiController;
 import com.google.android.apps.common.testing.ui.espresso.matcher.RootMatchers;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 
 import org.hamcrest.Matcher;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -49,19 +57,28 @@ public final class RootViewPicker implements Provider<List<View>> {
     private final UiController uiController;
     private final ActivityLifecycleMonitor activityLifecycleMonitor;
     private final AtomicReference<Matcher<Root>> rootMatcherRef;
+    private final Screenshotter screenshotter;
+    private final File outdir;
+    private final SimpleDateFormat dateFormat;
 
     // this is really just used for composing error messages accurately since returning
     // both the selected roots, and all roots from findRoots() would be hideous
     private transient List<Root> allRoots;
 
+    @SuppressLint("NewApi")
     @Inject
     RootViewPicker(Provider<List<Root>> rootsOracle, UiController uiController,
                    ActivityLifecycleMonitor activityLifecycleMonitor,
-                   AtomicReference<Matcher<Root>> rootMatcherRef) {
+                   AtomicReference<Matcher<Root>> rootMatcherRef,
+                   Screenshotter screenshotter,
+                   @TargetContext Context context) {
         this.rootsOracle = rootsOracle;
         this.uiController = uiController;
         this.activityLifecycleMonitor = activityLifecycleMonitor;
         this.rootMatcherRef = rootMatcherRef;
+        this.screenshotter = screenshotter;
+        this.outdir = new File(Objects.firstNonNull(((Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO) ? null : context.getExternalFilesDir(null)), context.getFilesDir()), "test-results");
+        this.dateFormat = new SimpleDateFormat("HH':'mm':'ss.SSS");
     }
 
     @Override
@@ -88,6 +105,8 @@ public final class RootViewPicker implements Provider<List<View>> {
             } else {
                 // we've waited for the root view to be fully laid out and have window focus
                 // for over 10 seconds. something is wrong.
+                screenshotter.snapToFile(new File(outdir, String.format("badroot-%s.jpg", dateFormat.format(new Date()))), roots);
+                
                 throw new RuntimeException(String.format("Waited for the selected roots of the view hierarchy to have"
                         + " window focus and not be requesting layout for over 10 seconds. If you specified a"
                         + " non default root matcher, it may be picking roots that never take focus."
