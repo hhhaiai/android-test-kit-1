@@ -235,7 +235,14 @@ public final class ViewInteraction {
                         takeScreenshot();
 
                         try {
-                            viewAssert.check(Optional.of(viewFinder.getView()), Optional.<NoMatchingViewException>absent());
+                            Optional<View> targetView = Optional.absent();
+                            Optional<NoMatchingViewException> missingViewException = Optional.absent();
+                            try {
+                                targetView = Optional.of(viewFinder.getView());
+                            } catch (NoMatchingViewException nmve) {
+                                missingViewException = Optional.of(nmve);
+                            }
+                            viewAssert.check(targetView, missingViewException);
                             t[0] = null;
                         } catch (NoMatchingViewException nmve) {
                             t[0] = nmve;
