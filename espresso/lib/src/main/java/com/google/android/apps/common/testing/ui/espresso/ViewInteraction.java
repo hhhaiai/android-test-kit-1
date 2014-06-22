@@ -66,7 +66,6 @@ public final class ViewInteraction {
     private final Provider<List<Root>> rootsOracle;
     private final Screenshotter screenshotter;
     private final File outdir;
-
     private final SimpleDateFormat dateFormat;
 
     private double timeout;
@@ -216,8 +215,9 @@ public final class ViewInteraction {
         };
 
         final Throwable t[] = new Throwable[1];
+        final long startTime = SystemClock.elapsedRealtime();
         try {
-            long target = SystemClock.elapsedRealtime() + (long)(timeout * 1000);
+            long target = startTime + (long)(timeout * 1000);
             while (true) {
                 runSynchronouslyOnUiThread(new Runnable() {
                     @Override
@@ -270,6 +270,12 @@ public final class ViewInteraction {
                 else
                     vto.removeOnGlobalLayoutListener(layoutListener);
             }
+
+            Log.i("CHECK_WAIT", String.format("Took %d ms (%d ms max) looking for view matching %s to assert %s",
+                    SystemClock.elapsedRealtime() - startTime,
+                    ((long)timeout * 1000),
+                    viewMatcher,
+                    viewAssert));
         }
 
         if (t[0] != null)
