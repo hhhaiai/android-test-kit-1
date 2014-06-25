@@ -317,31 +317,31 @@ final class UiControllerImpl implements UiController, Handler.Callback {
                             IdleCondition.COMPAT_TASKS_HAVE_IDLED, generation));
                     condChecks.add(IdleCondition.COMPAT_TASKS_HAVE_IDLED);
                 }
+            }
 
-                if (!idlingResourceRegistry.allResourcesAreIdle()) {
-                    final IdlingPolicy warning = IdlingPolicies.getDynamicIdlingResourceWarningPolicy();
-                    final IdlingPolicy error = IdlingPolicies.getDynamicIdlingResourceErrorPolicy();
-                    final SignalingTask<Void> idleSignal = new SignalingTask<Void>(NO_OP,
-                            IdleCondition.DYNAMIC_TASKS_HAVE_IDLED, generation);
-                    idlingResourceRegistry.notifyWhenAllResourcesAreIdle(new IdleNotificationCallback() {
-                        @Override
-                        public void resourcesStillBusyWarning(List<String> busyResourceNames) {
-                            warning.handleTimeout(busyResourceNames, "IdlingResources are still busy!");
-                        }
+            if (!idlingResourceRegistry.allResourcesAreIdle()) {
+                final IdlingPolicy warning = IdlingPolicies.getDynamicIdlingResourceWarningPolicy();
+                final IdlingPolicy error = IdlingPolicies.getDynamicIdlingResourceErrorPolicy();
+                final SignalingTask<Void> idleSignal = new SignalingTask<Void>(NO_OP,
+                        IdleCondition.DYNAMIC_TASKS_HAVE_IDLED, generation);
+                idlingResourceRegistry.notifyWhenAllResourcesAreIdle(new IdleNotificationCallback() {
+                    @Override
+                    public void resourcesStillBusyWarning(List<String> busyResourceNames) {
+                        warning.handleTimeout(busyResourceNames, "IdlingResources are still busy!");
+                    }
 
-                        @Override
-                        public void resourcesHaveTimedOut(List<String> busyResourceNames) {
-                            error.handleTimeout(busyResourceNames, "IdlingResources have timed out!");
-                            controllerHandler.post(idleSignal);
-                        }
+                    @Override
+                    public void resourcesHaveTimedOut(List<String> busyResourceNames) {
+                        error.handleTimeout(busyResourceNames, "IdlingResources have timed out!");
+                        controllerHandler.post(idleSignal);
+                    }
 
-                        @Override
-                        public void allResourcesIdle() {
-                            controllerHandler.post(idleSignal);
-                        }
-                    });
-                    condChecks.add(IdleCondition.DYNAMIC_TASKS_HAVE_IDLED);
-                }
+                    @Override
+                    public void allResourcesIdle() {
+                        controllerHandler.post(idleSignal);
+                    }
+                });
+                condChecks.add(IdleCondition.DYNAMIC_TASKS_HAVE_IDLED);
             }
 
             try {
@@ -352,10 +352,10 @@ final class UiControllerImpl implements UiController, Handler.Callback {
                     if (compatTaskMonitor.isPresent()) {
                         compatTaskMonitor.get().cancelIdleMonitor();
                     }
-                    idlingResourceRegistry.cancelIdleMonitor();
                 }
+                idlingResourceRegistry.cancelIdleMonitor();
             }
-        } while ((!asyncTaskMonitor.isIdleNow() || !compatIdle() || !idlingResourceRegistry.allResourcesAreIdle()) && idleForAsyncTasks);
+        } while (((!asyncTaskMonitor.isIdleNow() || !compatIdle()) && idleForAsyncTasks) || !idlingResourceRegistry.allResourcesAreIdle());
 
     }
 
