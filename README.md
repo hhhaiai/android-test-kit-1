@@ -17,6 +17,6 @@ Screenshots
 Espresso will now automatically take screenshots during `perform(ViewInteraction vi)` and `check(ViewAssertion va)` to help debug any failures. When a test does fail, Espresso will automatically dump the final failure screenshot and the screens leading up to it from the current test method to your app's data directory with these naming schemes:
 
 ```
-junit-reports/{class}-{method}/failure.jpg // final failure 
-junit-reports/{class}-{method}/snapshot-{time}.jpg // screens leading up to failure
+files/test-results/{class}-{method}/failure.jpg // final failure 
+files/test-results/{class}-{method}/snapshot-{time}.jpg // screens leading up to failure
 ```
