@@ -130,6 +130,13 @@ public final class AdapterDataLoaderAction implements ViewAction {
       }
       uiController.loopMainThreadForAtLeast(100);
       requestCount++;
+      if (requestCount == 100) {
+        throw new PerformException.Builder()
+            .withActionDescription(this.getDescription())
+            .withViewDescription(HumanReadables.describe(view))
+            .withCause(new RuntimeException("Timed out waiting for data to be rendered in adapterView"))
+            .build();
+      }
     }
   }
 
