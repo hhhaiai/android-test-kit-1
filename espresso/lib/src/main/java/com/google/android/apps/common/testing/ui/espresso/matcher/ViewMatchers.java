@@ -144,7 +144,8 @@ public final class ViewMatchers {
                 Rect vr = new Rect();
                 ArrayList<Rect> scratch = new ArrayList<Rect>();
                 for (View cover : covers) {
-                    if (cover.getGlobalVisibleRect(vr)) {
+                    if (cover.getGlobalVisibleRect(vr)
+                            && !withEffectiveVisibility(Visibility.GONE).matches(cover)) {
                         for (Rect visRect : visibleAreaRects) {
                             scratch.addAll(subtractRect(visRect, vr));
                         }
