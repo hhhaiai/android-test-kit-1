@@ -19,7 +19,7 @@ import org.hamcrest.Matcher;
 /**
  * Enables clicking on views.
  */
-public final class GeneralClickAction implements ViewAction {
+public class GeneralClickAction implements ViewAction {
 
     private final static String TAG = GeneralClickAction.class.getSimpleName();
 
@@ -27,6 +27,7 @@ public final class GeneralClickAction implements ViewAction {
     private final Tapper tapper;
     private final PrecisionDescriber precisionDescriber;
     private final Optional<ViewAction> rollbackAction;
+    private final Matcher<View> constraint;
 
     public GeneralClickAction(Tapper tapper, CoordinatesProvider coordinatesProvider,
                               PrecisionDescriber precisionDescriber) {
@@ -35,16 +36,22 @@ public final class GeneralClickAction implements ViewAction {
 
     public GeneralClickAction(Tapper tapper, CoordinatesProvider coordinatesProvider,
                               PrecisionDescriber precisionDescriber, ViewAction rollbackAction) {
+        this(tapper, coordinatesProvider, precisionDescriber, rollbackAction, null);
+    }
+
+    public GeneralClickAction(Tapper tapper, CoordinatesProvider coordinatesProvider,
+                              PrecisionDescriber precisionDescriber, ViewAction rollbackAction, Matcher<View> constraint) {
         this.coordinatesProvider = coordinatesProvider;
         this.tapper = tapper;
         this.precisionDescriber = precisionDescriber;
         this.rollbackAction = Optional.fromNullable(rollbackAction);
+        this.constraint = constraint;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Matcher<View> getConstraints() {
-        Matcher<View> standardConstraint = isDisplayingAtLeast(90);
+        Matcher<View> standardConstraint = constraint != null ? constraint : isDisplayingAtLeast(90);
         if (rollbackAction.isPresent()) {
             return allOf(standardConstraint, rollbackAction.get().getConstraints());
         } else {

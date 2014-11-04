@@ -3,6 +3,8 @@ package com.google.android.apps.common.testing.ui.espresso.action;
 import android.view.KeyEvent;
 
 import com.google.android.apps.common.testing.ui.espresso.ViewAction;
+import com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers;
+import static com.google.android.apps.common.testing.ui.espresso.matcher.ViewMatchers.withEffectiveVisibility;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -35,6 +37,18 @@ public final class ViewActions {
    */
   public static ViewAction click() {
     return new GeneralClickAction(Tap.SINGLE, GeneralLocation.CENTER, Press.FINGER);
+  }
+
+  /**
+   * Returns an action that clicks the view.<br>
+   * <br>
+   * View constraints:
+   * <ul>
+   * <li>must be set to VISIBLE
+   * <ul>
+   */
+  public static ViewAction blindClick() {
+      return new GeneralClickAction(Tap.SINGLE, GeneralLocation.CENTER, Press.FINGER, null, withEffectiveVisibility(ViewMatchers.Visibility.VISIBLE));
   }
 
   /**
